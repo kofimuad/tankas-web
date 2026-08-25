@@ -50,26 +50,30 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-canvas">
       <header className="sticky top-0 z-40 border-b border-border bg-canvas/85 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
-          <Link href="/" className="flex items-center gap-2.5">
-            <span className="grid size-8 place-items-center rounded-sm bg-primary">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-5">
+          <Link href="/" className="flex shrink-0 items-center gap-2.5">
+            <span className="grid size-8 shrink-0 place-items-center rounded-sm bg-primary">
               <Icon name="leaf" size={18} className="text-on-primary" />
             </span>
-            <span className="font-display text-xl font-extrabold tracking-[-0.02em] text-ink">
+            <span className="font-display text-lg font-extrabold tracking-[-0.02em] text-ink sm:text-xl">
               Tankas
             </span>
           </Link>
-          <nav className="flex items-center gap-2.5">
-            <ThemeToggle />
+          {/* These are flex children, so without shrink-0 + whitespace-nowrap
+              they get squeezed below their text width and the labels wrap onto
+              two lines. Nowrap alone would then overflow horizontally at 320px,
+              so the type and padding step down on small screens too. */}
+          <nav className="flex shrink-0 items-center gap-1 sm:gap-2.5">
+            <ThemeToggle className="hidden sm:grid" />
             <Link
               href="/login"
-              className="rounded-full px-3.5 py-2.5 text-[13px] font-semibold text-ink"
+              className="shrink-0 whitespace-nowrap rounded-full px-2 py-2.5 text-xs font-semibold text-ink sm:px-3 sm:text-[13px]"
             >
               Sign in
             </Link>
             <Link
               href="/signup"
-              className="rounded-full bg-primary px-4 py-2.5 text-[13px] font-semibold text-on-primary transition-opacity hover:opacity-90"
+              className="shrink-0 whitespace-nowrap rounded-full bg-primary px-3 py-2.5 text-xs font-semibold text-on-primary transition-opacity hover:opacity-90 sm:px-4 sm:text-[13px]"
             >
               Get started
             </Link>
@@ -94,14 +98,14 @@ export default function LandingPage() {
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/signup"
-              className="flex h-13 items-center gap-2 rounded-md bg-primary px-7 text-[15px] font-semibold text-on-primary transition-opacity hover:opacity-90"
+              className="flex h-13 items-center gap-2 whitespace-nowrap rounded-md bg-primary px-7 text-[15px] font-semibold text-on-primary transition-opacity hover:opacity-90"
             >
               Start reporting
               <Icon name="forward" size={17} />
             </Link>
             <Link
               href="/issues"
-              className="flex h-13 items-center rounded-md border border-border bg-surface px-7 text-[15px] font-semibold text-ink transition-colors hover:bg-surface-2"
+              className="flex h-13 items-center whitespace-nowrap rounded-md border border-border bg-surface px-7 text-[15px] font-semibold text-ink transition-colors hover:bg-surface-2"
             >
               Browse issues
             </Link>
@@ -191,7 +195,7 @@ export default function LandingPage() {
               </div>
               <Link
                 href="/issues"
-                className="flex shrink-0 items-center gap-1 text-[13px] font-semibold text-primary-ink"
+                className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[13px] font-semibold text-primary-ink"
               >
                 See all
                 <Icon name="forward" size={14} />
@@ -220,7 +224,7 @@ export default function LandingPage() {
             </p>
             <Link
               href="/signup"
-              className="flex h-13 items-center rounded-md bg-on-primary px-8 text-[15px] font-semibold text-primary transition-opacity hover:opacity-90"
+              className="flex h-13 items-center whitespace-nowrap rounded-md bg-on-primary px-8 text-[15px] font-semibold text-primary transition-opacity hover:opacity-90"
             >
               Create your account
             </Link>

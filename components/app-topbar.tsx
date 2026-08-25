@@ -19,7 +19,7 @@ export function AppTopbar() {
       <div className="flex items-center gap-2.5">
         <Link
           href="/report"
-          className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-[13px] font-semibold text-on-primary transition-opacity hover:opacity-90"
+          className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-primary px-4 py-2.5 text-[13px] font-semibold text-on-primary transition-opacity hover:opacity-90"
         >
           <Icon name="plus" size={16} />
           Report issue

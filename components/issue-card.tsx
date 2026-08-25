@@ -69,7 +69,7 @@ export function IssueCard({
               {distanceKm.toFixed(1)} km away
             </span>
           )}
-          <span className="ml-auto flex items-center gap-1 rounded-full bg-primary-soft px-2 py-[3px] text-xs font-semibold text-primary-ink">
+          <span className="ml-auto flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-primary-soft px-2 py-[3px] text-xs font-semibold text-primary-ink">
             <Icon name="zap" size={12} />
             {issue.points_assigned} pts
           </span>
