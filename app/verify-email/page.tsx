@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authApi } from "@/lib/api";
 import { toast } from "sonner";
 import Link from "next/link";
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const router = useRouter();
   const params = useSearchParams();
   const email = params.get("email") || "";
@@ -142,5 +142,17 @@ export default function VerifyEmailPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+// useSearchParams() opts the subtree out of prerendering, so it needs a
+// Suspense boundary above it or `next build` fails collecting this page.
+export default function VerifyEmailPage() {
+  return (
+    <Suspense
+      fallback={<div className="min-h-screen bg-[#0e1a13]" />}
+    >
+      <VerifyEmailContent />
+    </Suspense>
   );
 }

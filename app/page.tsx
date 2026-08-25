@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { issuesApi, Issue } from "@/lib/api";
-import { motion } from "framer-motion";
 
 // ---------------------------------------------------------------------------
 // Stat counter component

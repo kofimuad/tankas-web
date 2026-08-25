@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { AppNavbar } from "@/components/app-navbar";
 import { BottomNav } from "@/components/bottom-nav";
 import { BadgeTier } from "@/components/badge-tier";
 import { useAuth } from "@/lib/auth-context";
-import { apiClient } from "@/lib/api";
+import { profileApi, DashboardStats } from "@/lib/api";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -15,13 +15,21 @@ function ProfileContent() {
   const [editing, setEditing] = useState(false);
   const [displayName, setDisplayName] = useState(user?.display_name || "");
   const [saving, setSaving] = useState(false);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+
+  useEffect(() => {
+    profileApi
+      .getDashboard()
+      .then((d) => setStats(d?.stats ?? null))
+      .catch(() => setStats(null));
+  }, []);
 
   if (!user) return null;
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await apiClient.put("/users/me", { display_name: displayName });
+      await profileApi.update({ display_name: displayName });
       await refreshUser();
       toast.success("Profile updated!");
       setEditing(false);
@@ -125,12 +133,12 @@ function ProfileContent() {
             },
             {
               label: "Issues Reported",
-              value: user.issues_reported ?? 0,
+              value: stats?.issues_reported ?? 0,
               icon: "📸",
             },
             {
               label: "Tasks Completed",
-              value: user.tasks_completed ?? 0,
+              value: stats?.tasks_completed ?? 0,
               icon: "✅",
             },
             {

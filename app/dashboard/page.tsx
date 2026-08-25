@@ -8,7 +8,13 @@ import { AppNavbar } from "@/components/app-navbar";
 import { BottomNav } from "@/components/bottom-nav";
 import { BadgeTier } from "@/components/badge-tier";
 import { IssueCard } from "@/components/issue-card";
-import { issuesApi, leaderboardApi, Issue } from "@/lib/api";
+import {
+  issuesApi,
+  leaderboardApi,
+  profileApi,
+  Issue,
+  DashboardStats,
+} from "@/lib/api";
 
 function StatsCard({
   label,
@@ -37,10 +43,18 @@ function DashboardContent() {
   const { user } = useAuth();
   const [nearbyIssues, setNearbyIssues] = useState<Issue[]>([]);
   const [rank, setRank] = useState<number | null>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
+
+    // Fetched on its own rather than alongside the map data: a failure here
+    // should blank the counters, not the nearby-issues list.
+    profileApi
+      .getDashboard()
+      .then((d) => setStats(d?.stats ?? null))
+      .catch(() => setStats(null));
 
     // Load nearby issues using default Accra coords if no geolocation
     const loadData = async (lat = 5.6037, lng = -0.187) => {
@@ -131,13 +145,13 @@ function DashboardContent() {
           />
           <StatsCard
             label="Issues Reported"
-            value={user.issues_reported ?? 0}
+            value={stats?.issues_reported ?? 0}
             icon="📸"
             sub="+15 pts each"
           />
           <StatsCard
             label="Tasks Completed"
-            value={user.tasks_completed ?? 0}
+            value={stats?.tasks_completed ?? 0}
             icon="✅"
             sub="Cleanups done"
           />

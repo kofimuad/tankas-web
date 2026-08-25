@@ -74,7 +74,6 @@ export interface AuthResponse {
 
 export interface Issue {
   id: string;
-  user_id: string;
   title: string;
   description: string;
   picture_url: string;
@@ -82,12 +81,21 @@ export interface Issue {
   longitude: number;
   priority: "low" | "medium" | "high";
   difficulty: "easy" | "medium" | "hard";
-  ai_labels: string[];
-  ai_confidence_score: number;
   points_assigned: number;
   status: "open" | "resolved" | "pending_review" | "rejected";
-  location_source: string;
   created_at: string;
+
+  // Present on /issues/{id} and /issues/nearby, but not on the public /events
+  // feed, which deliberately returns only non-sensitive columns.
+  user_id?: string;
+  ai_labels?: string[];
+  ai_confidence_score?: number;
+  location_source?: string;
+
+  // Reporter details, returned by /events only.
+  username?: string;
+  display_name?: string;
+  avatar_url?: string | null;
 }
 
 export interface Pledge {
@@ -138,13 +146,54 @@ export const authApi = {
 };
 
 // ---------------------------------------------------------------------------
+// Profile API
+// ---------------------------------------------------------------------------
+
+export interface DashboardStats {
+  total_points: number;
+  issues_reported: number;
+  tasks_completed: number;
+  areas_cleaned: number;
+  volunteer_hours: number;
+  volunteer_streak: number;
+  total_kg_collected: number;
+  badges_earned: number;
+}
+
+export const profileApi = {
+  // Activity counters live here, not on /auth/me, which returns only identity.
+  getDashboard: async (): Promise<{ stats: DashboardStats }> => {
+    const res = await apiClient.get("/users/me/dashboard");
+    return res.data.data;
+  },
+
+  update: async (data: {
+    display_name?: string;
+    username?: string;
+    phone?: string;
+  }) => {
+    const res = await apiClient.patch("/users/me", data);
+    return res.data.data;
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Issues API
 // ---------------------------------------------------------------------------
 
 export const issuesApi = {
+  // The API has no "list all issues" route — /events is the public feed that
+  // serves that purpose. It names the primary key `issue_id`, so map it back
+  // to `id`, which is what IssueCard keys and links off.
   getAll: async (status?: string): Promise<Issue[]> => {
-    const res = await apiClient.get("/issues", { params: { status } });
-    return res.data;
+    const res = await apiClient.get("/events", { params: { status } });
+    const events = res.data?.data?.events ?? [];
+    return events.map(
+      ({ issue_id, ...rest }: { issue_id: string }): Issue => ({
+        id: issue_id,
+        ...(rest as Omit<Issue, "id">),
+      }),
+    );
   },
 
   getById: async (id: string): Promise<Issue> => {
