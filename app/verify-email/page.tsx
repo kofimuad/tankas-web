@@ -1,158 +1,151 @@
 "use client";
 
-import { useState, useRef, useEffect, Suspense } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { authApi } from "@/lib/api";
 import { toast } from "sonner";
-import Link from "next/link";
+import { authApi } from "@/lib/api";
+import { AuthLayout, authButtonClass } from "@/components/auth-layout";
 
-function VerifyEmailContent() {
+const LENGTH = 6;
+
+function VerifyForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const email = params.get("email") || "";
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const email = params.get("email") ?? "";
+
+  const [otp, setOtp] = useState<string[]>(Array(LENGTH).fill(""));
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [countdown, setCountdown] = useState(60);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const inputs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCountdown((c) => (c > 0 ? c - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+    if (countdown <= 0) return;
+    const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [countdown]);
 
-  const handleChange = (index: number, value: string) => {
-    if (!/^\d*$/.test(value)) return;
-    const newOtp = [...otp];
-    newOtp[index] = value.slice(-1);
-    setOtp(newOtp);
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-    // Auto-submit when all filled
-    if (newOtp.every((d) => d) && newOtp.join("").length === 6) {
-      handleVerify(newOtp.join(""));
-    }
+  const setDigit = (index: number, value: string) => {
+    const digit = value.replace(/\D/g, "").slice(-1);
+    setOtp((prev) => {
+      const next = [...prev];
+      next[index] = digit;
+      return next;
+    });
+    if (digit && index < LENGTH - 1) inputs.current[index + 1]?.focus();
   };
 
-  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
+  const onKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Backspace" && !otp[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
+      inputs.current[index - 1]?.focus();
     }
   };
 
-  const handleVerify = async (code?: string) => {
-    const otpCode = code || otp.join("");
-    if (otpCode.length !== 6) {
-      toast.error("Please enter all 6 digits");
+  // Let a pasted code fill every box rather than only the focused one.
+  const onPaste = (e: React.ClipboardEvent) => {
+    const text = e.clipboardData.getData("text").replace(/\D/g, "");
+    if (!text) return;
+    e.preventDefault();
+    const next = Array(LENGTH).fill("");
+    for (let i = 0; i < Math.min(text.length, LENGTH); i++) next[i] = text[i];
+    setOtp(next);
+    inputs.current[Math.min(text.length, LENGTH - 1)]?.focus();
+  };
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = otp.join("");
+    if (code.length < LENGTH) {
+      toast.error("Enter all 6 digits.");
       return;
     }
     setLoading(true);
     try {
-      await authApi.verifyOTP(email, otpCode);
-      toast.success("Email verified! Welcome to Tankas 🎉");
+      await authApi.verifyOTP(email, code);
+      toast.success("Email verified.");
       router.push("/dashboard");
-    } catch (err: any) {
-      toast.error(
-        err.response?.data?.detail || "Invalid code. Please try again.",
-      );
-      setOtp(["", "", "", "", "", ""]);
-      inputRefs.current[0]?.focus();
+    } catch (err) {
+      const detail =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail ?? "That code did not work.";
+      toast.error(detail);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResend = async () => {
-    if (countdown > 0) return;
+  const resend = async () => {
     setResending(true);
     try {
       await authApi.resendOTP(email);
-      toast.success("New code sent to your email!");
+      toast.success("New code sent.");
       setCountdown(60);
-      setOtp(["", "", "", "", "", ""]);
-      inputRefs.current[0]?.focus();
-    } catch (err: any) {
-      toast.error(err.response?.data?.detail || "Failed to resend code.");
+    } catch (err) {
+      const detail =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail ?? "Could not resend the code.";
+      toast.error(detail);
     } finally {
       setResending(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#0e1a13] flex flex-col justify-center px-6 py-12">
-      <div className="max-w-md mx-auto w-full text-center">
-        <Link
-          href="/"
-          className="font-display font-800 text-xl text-white mb-12 block"
-        >
-          🌍 Tankas
-        </Link>
-
-        <div className="text-5xl mb-6">📧</div>
-        <h1 className="font-display text-3xl font-700 text-white mb-2">
-          Check your email
-        </h1>
-        <p className="text-white/50 mb-2">We sent a 6-digit code to</p>
-        <p className="text-[#38e07b] font-medium mb-10">{email}</p>
-
-        {/* OTP inputs */}
-        <div className="flex justify-center gap-3 mb-8">
+    <AuthLayout
+      title="Verify your email"
+      subtitle={
+        email ? `We sent a 6-digit code to ${email}` : "Enter the 6-digit code"
+      }
+    >
+      <form onSubmit={submit} className="flex flex-col gap-5">
+        <div className="flex justify-center gap-2" onPaste={onPaste}>
           {otp.map((digit, i) => (
             <input
               key={i}
               ref={(el) => {
-                inputRefs.current[i] = el;
+                inputs.current[i] = el;
               }}
-              type="text"
-              inputMode="numeric"
-              maxLength={1}
               value={digit}
-              onChange={(e) => handleChange(i, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(i, e)}
-              className="w-12 h-14 text-center text-xl font-display font-700 text-white bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-[#38e07b]/60 transition-colors"
+              onChange={(e) => setDigit(i, e.target.value)}
+              onKeyDown={(e) => onKeyDown(i, e)}
+              inputMode="numeric"
+              autoComplete={i === 0 ? "one-time-code" : "off"}
+              maxLength={1}
+              aria-label={`Digit ${i + 1}`}
+              className="numeric size-12 rounded-md border border-border bg-surface text-center text-xl font-bold text-ink outline-none focus:border-primary"
             />
           ))}
         </div>
 
-        <button
-          onClick={() => handleVerify()}
-          disabled={loading || otp.some((d) => !d)}
-          className="w-full bg-[#38e07b] text-[#0e1a13] font-display font-700 text-base py-4 rounded-xl hover:bg-[#38e07b]/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed mb-6"
-        >
-          {loading ? "Verifying..." : "Verify email →"}
+        <button type="submit" disabled={loading} className={authButtonClass}>
+          {loading ? "Verifying…" : "Verify email"}
         </button>
 
         <button
-          onClick={handleResend}
+          type="button"
+          onClick={resend}
           disabled={countdown > 0 || resending}
-          className="text-white/40 text-sm hover:text-white/70 transition-colors disabled:cursor-not-allowed"
+          className="text-center text-[13px] font-semibold text-primary-ink disabled:text-ink-muted"
         >
           {countdown > 0
             ? `Resend code in ${countdown}s`
             : resending
-              ? "Sending..."
+              ? "Sending…"
               : "Resend code"}
         </button>
-
-        <p className="text-white/20 text-xs mt-6">
-          Didn&apos;t get an email? Check your spam folder.
-        </p>
-      </div>
-    </div>
+      </form>
+    </AuthLayout>
   );
 }
 
-// useSearchParams() opts the subtree out of prerendering, so it needs a
-// Suspense boundary above it or `next build` fails collecting this page.
 export default function VerifyEmailPage() {
+  // useSearchParams() opts this subtree out of prerendering, so it needs a
+  // Suspense boundary above it.
   return (
     <Suspense
-      fallback={<div className="min-h-screen bg-[#0e1a13]" />}
+      fallback={<div className="min-h-screen bg-canvas" aria-busy="true" />}
     >
-      <VerifyEmailContent />
+      <VerifyForm />
     </Suspense>
   );
 }

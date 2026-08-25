@@ -1,170 +1,236 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { AuthGuard } from "@/components/auth-guard";
-import { AppNavbar } from "@/components/app-navbar";
-import { BottomNav } from "@/components/bottom-nav";
-import { BadgeTier } from "@/components/badge-tier";
-import { leaderboardApi } from "@/lib/api";
+import { AppShell } from "@/components/app-shell";
+import { Icon } from "@/components/ui/icon";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/lib/auth-context";
+import { leaderboardApi } from "@/lib/api";
+import { TIER, tierForPoints, type Tier } from "@/lib/design";
+import { cn } from "@/lib/utils";
 
+// The five boards the API exposes (`leaderboard_service.py`).
 const TABS = [
-  { key: "points", label: "Points", icon: "⭐" },
-  { key: "issues_reported", label: "Issues", icon: "📸" },
-  { key: "collections", label: "Collections", icon: "♻️" },
-  { key: "kg_collected", label: "KG", icon: "⚖️" },
-  { key: "volunteer_hours", label: "Hours", icon: "⏱️" },
-];
+  { key: "points", label: "Points" },
+  { key: "issues_reported", label: "Issues" },
+  { key: "collections", label: "Collections" },
+  { key: "kg_collected", label: "Kg" },
+  { key: "volunteer_hours", label: "Hours" },
+] as const;
+
+type Row = {
+  rank: number;
+  user_id: string;
+  username: string;
+  display_name?: string | null;
+  metric_value: number;
+  badge_tier?: Tier | null;
+};
 
 function LeaderboardContent() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("points");
-  const [rankings, setRankings] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<string>("points");
 
-  useEffect(() => {
-    setLoading(true);
-    leaderboardApi
-      .get(activeTab)
-      .then((data) => setRankings(data?.rankings || []))
-      .catch(() => setRankings([]))
-      .finally(() => setLoading(false));
-  }, [activeTab]);
+  const { data: rows = [], isPending: loading } = useQuery({
+    queryKey: ["leaderboard", tab],
+    queryFn: async (): Promise<Row[]> => {
+      const d = await leaderboardApi.get(tab);
+      return d?.rankings ?? [];
+    },
+  });
 
-  const formatValue = (value: number) => {
-    if (activeTab === "kg_collected") return `${value.toFixed(1)} kg`;
-    if (activeTab === "volunteer_hours") return `${value.toFixed(1)}h`;
-    return value.toLocaleString();
+  const format = (v: number) => {
+    if (tab === "kg_collected") return `${v.toFixed(1)} kg`;
+    if (tab === "volunteer_hours") return `${v.toFixed(1)}h`;
+    return Math.round(v).toLocaleString();
   };
 
+  const podium = rows.slice(0, 3);
+  const rest = rows.slice(3);
+  // Podium reads 2nd–1st–3rd so the winner sits centre and tallest.
+  const order = [1, 0, 2];
+
   return (
-    <div className="min-h-screen bg-[#0e1a13] pb-24 md:pb-8">
-      <AppNavbar />
-
-      <div className="max-w-2xl mx-auto px-4 md:px-6 py-6 space-y-6">
+    <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-4 lg:px-8 lg:py-7">
+      <header className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl font-700 text-white mb-1">
-            Leaderboard
+          <h1 className="font-display text-[26px] font-bold text-ink">
+            Leaderboards
           </h1>
-          <p className="text-white/40">Top performers in the community</p>
+          <p className="text-xs text-ink-muted">Top warriors this week</p>
         </div>
+        <div className="lg:hidden">
+          <ThemeToggle />
+        </div>
+      </header>
 
-        {/* Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          {TABS.map((tab) => (
+      <div
+        role="tablist"
+        aria-label="Leaderboard metric"
+        className="flex gap-2 overflow-x-auto pb-1"
+      >
+        {TABS.map((t) => {
+          const active = tab === t.key;
+          return (
             <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                activeTab === tab.key
-                  ? "bg-[#38e07b] text-[#0e1a13] font-600"
-                  : "bg-white/5 border border-white/10 text-white/50 hover:text-white"
-              }`}
+              key={t.key}
+              role="tab"
+              aria-selected={active}
+              onClick={() => setTab(t.key)}
+              className={cn(
+                "shrink-0 rounded-full px-4 py-2 text-xs transition-colors",
+                active
+                  ? "bg-primary font-semibold text-on-primary"
+                  : "border border-border bg-surface font-medium text-ink-muted hover:text-ink",
+              )}
             >
-              {tab.icon} {tab.label}
+              {t.label}
             </button>
-          ))}
+          );
+        })}
+      </div>
+
+      {loading ? (
+        <div className="space-y-3">
+          <div className="skeleton h-50" />
+          <div className="skeleton h-64" />
         </div>
+      ) : rows.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 rounded-lg border border-border bg-surface px-6 py-16 text-center">
+          <Icon name="trophy" size={28} className="text-ink-muted" />
+          <p className="text-sm text-ink-muted">
+            No rankings for this board yet.
+          </p>
+        </div>
+      ) : (
+        <>
+          {podium.length === 3 && (
+            <div className="flex items-end justify-center gap-2.5">
+              {order.map((idx) => {
+                const row = podium[idx];
+                const first = idx === 0;
+                const tier = row.badge_tier ?? tierForPoints(row.metric_value);
+                const height = first ? "h-29" : idx === 1 ? "h-23" : "h-19";
+                return (
+                  <div
+                    key={row.user_id}
+                    className="flex flex-1 flex-col items-center gap-2"
+                  >
+                    <span
+                      className={cn(
+                        "grid place-items-center rounded-full bg-surface-2 font-display font-bold text-ink-muted ring-[3px]",
+                        first ? "size-14 text-[17px]" : "size-11.5 text-sm",
+                        TIER[tier]?.ring ?? TIER.bronze.ring,
+                      )}
+                    >
+                      {initials(row.display_name || row.username)}
+                    </span>
+                    <span className="w-full truncate text-center text-[11px] font-semibold text-ink">
+                      {row.display_name || row.username}
+                    </span>
+                    <div
+                      className={cn(
+                        "flex w-full flex-col items-center justify-center gap-0.5 rounded-t-[10px]",
+                        height,
+                        first ? "bg-primary" : "bg-surface-2",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "numeric text-xl font-bold",
+                          first ? "text-on-primary" : "text-ink-muted",
+                        )}
+                      >
+                        {row.rank}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-[11px] font-semibold",
+                          first ? "text-on-primary/75" : "text-ink-muted",
+                        )}
+                      >
+                        {format(row.metric_value)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
-        {/* Rankings */}
-        {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div
-                key={i}
-                className="bg-white/4 rounded-2xl h-16 animate-pulse"
-              />
-            ))}
-          </div>
-        ) : rankings.length > 0 ? (
-          <div className="space-y-2">
-            {rankings.slice(0, 50).map((entry: any, i: number) => {
-              const isCurrentUser = entry.user_id === user?.id;
-              const rank = i + 1;
-              const medal =
-                rank === 1
-                  ? "🥇"
-                  : rank === 2
-                    ? "🥈"
-                    : rank === 3
-                      ? "🥉"
-                      : null;
-
+          <div className="overflow-hidden rounded-lg border border-border bg-surface">
+            {(podium.length === 3 ? rest : rows).map((row) => {
+              const me = row.user_id === user?.id;
               return (
                 <div
-                  key={entry.user_id}
-                  className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${
-                    isCurrentUser
-                      ? "bg-[#38e07b]/10 border-[#38e07b]/30"
-                      : "bg-white/3 border-white/6 hover:bg-white/5"
-                  }`}
+                  key={row.user_id}
+                  className={cn(
+                    "flex items-center gap-3 border-b border-border px-3.5 py-2.5 last:border-b-0",
+                    me && "bg-primary-soft",
+                  )}
                 >
-                  {/* Rank */}
-                  <div className="w-8 text-center">
-                    {medal ? (
-                      <span className="text-xl">{medal}</span>
-                    ) : (
-                      <span className="font-display text-sm font-600 text-white/30">
-                        #{rank}
-                      </span>
+                  <span
+                    className={cn(
+                      "numeric w-5 text-[13px] font-bold",
+                      me ? "text-primary-ink" : "text-ink-muted",
                     )}
-                  </div>
-
-                  {/* Avatar */}
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-display font-700 text-sm ${
-                      isCurrentUser
-                        ? "bg-[#38e07b]/30 text-[#38e07b]"
-                        : "bg-white/10 text-white/60"
-                    }`}
                   >
-                    {entry.display_name?.[0]?.toUpperCase() ||
-                      entry.username[0].toUpperCase()}
-                  </div>
-
-                  {/* Name + badge */}
-                  <div className="flex-1 min-w-0">
-                    <p
-                      className={`font-display font-600 text-sm truncate ${isCurrentUser ? "text-white" : "text-white/80"}`}
-                    >
-                      {entry.display_name || entry.username}
-                      {isCurrentUser && (
-                        <span className="text-[#38e07b] text-xs ml-2">you</span>
-                      )}
-                    </p>
-                    <BadgeTier
-                      tier={entry.badge_tier || "bronze"}
-                      size="sm"
-                      showLabel={false}
-                    />
-                  </div>
-
-                  {/* Value */}
-                  <p
-                    className={`font-display font-700 text-base ${isCurrentUser ? "text-[#38e07b]" : "text-white"}`}
+                    {row.rank}
+                  </span>
+                  <span
+                    className={cn(
+                      "grid size-8 place-items-center rounded-full text-[11px] font-semibold",
+                      me
+                        ? "bg-primary text-on-primary"
+                        : "bg-surface-2 text-ink-muted",
+                    )}
                   >
-                    {formatValue(entry.metric_value)}
-                  </p>
+                    {initials(row.display_name || row.username)}
+                  </span>
+                  <span
+                    className={cn(
+                      "min-w-0 flex-1 truncate text-[13px] text-ink",
+                      me ? "font-bold" : "font-medium",
+                    )}
+                  >
+                    {me ? "You" : row.display_name || row.username}
+                  </span>
+                  <span
+                    className={cn(
+                      "numeric text-sm font-bold",
+                      me ? "text-primary-ink" : "text-ink",
+                    )}
+                  >
+                    {format(row.metric_value)}
+                  </span>
                 </div>
               );
             })}
           </div>
-        ) : (
-          <div className="text-center py-16">
-            <div className="text-5xl mb-3">🏆</div>
-            <p className="text-white/30">No rankings yet. Be the first!</p>
-          </div>
-        )}
-      </div>
-      <BottomNav />
+        </>
+      )}
     </div>
   );
+}
+
+function initials(name: string) {
+  return name
+    .split(" ")
+    .map((p) => p[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 }
 
 export default function LeaderboardPage() {
   return (
     <AuthGuard>
-      <LeaderboardContent />
+      <AppShell>
+        <LeaderboardContent />
+      </AppShell>
     </AuthGuard>
   );
 }

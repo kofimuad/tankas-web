@@ -257,6 +257,64 @@ export const pledgesApi = {
 };
 
 // ---------------------------------------------------------------------------
+// Public API (no auth required)
+// ---------------------------------------------------------------------------
+
+export interface PlatformStats {
+  total_users: number;
+  total_issues: number;
+  resolved_issues: number;
+  open_issues: number;
+  total_kg_collected: number;
+}
+
+export const publicApi = {
+  getStats: async (): Promise<PlatformStats> => {
+    const res = await apiClient.get("/stats");
+    return res.data?.data ?? res.data;
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Comments API
+// ---------------------------------------------------------------------------
+
+export interface Comment {
+  comment_id: string;
+  content: string;
+  created_at: string;
+  author: {
+    user_id: string;
+    username: string;
+    display_name: string | null;
+    avatar_url: string | null;
+  };
+}
+
+export const commentsApi = {
+  // Public endpoint — readable without a token.
+  getByIssue: async (
+    issueId: string,
+    limit = 50,
+  ): Promise<{ comments: Comment[]; total: number }> => {
+    const res = await apiClient.get(`/issues/${issueId}/comments`, {
+      params: { limit },
+    });
+    return res.data.data;
+  },
+
+  create: async (issueId: string, content: string): Promise<Comment> => {
+    const res = await apiClient.post(`/issues/${issueId}/comments`, { content });
+    return res.data.data;
+  },
+
+  remove: async (commentId: string) => {
+    const res = await apiClient.delete(`/comments/${commentId}`);
+    return res.data.data;
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Volunteers API
 // ---------------------------------------------------------------------------
 
@@ -335,6 +393,100 @@ export const paymentsApi = {
   getRates: async () => {
     const res = await apiClient.get("/payments/rates");
     return res.data.data;
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Collections API
+// ---------------------------------------------------------------------------
+
+export interface Destination {
+  id: string;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  operating_hours: string | null;
+  contact_phone: string | null;
+  distance_km?: number;
+}
+
+export interface CollectorStats {
+  total_collections: number;
+  verified_collections: number;
+  total_kg_collected: number;
+  pending_collections?: number;
+}
+
+export const collectionsApi = {
+  getNearbyDestinations: async (
+    lat: number,
+    lng: number,
+    radiusKm = 10,
+  ): Promise<Destination[]> => {
+    const res = await apiClient.get("/destinations/nearby", {
+      params: { latitude: lat, longitude: lng, radius_km: radiusKm },
+    });
+    const data = res.data?.data ?? res.data;
+    return data?.destinations ?? data ?? [];
+  },
+
+  getCollectorStats: async (userId: string): Promise<CollectorStats> => {
+    const res = await apiClient.get(`/collectors/${userId}/statistics`);
+    return res.data?.data ?? res.data;
+  },
+
+  start: async (issueId: string) => {
+    const res = await apiClient.post(`/start/${issueId}`);
+    return res.data?.data ?? res.data;
+  },
+
+  // Multipart: proof photo, weight in kg and the GPS fix used for the
+  // distance check against the destination.
+  submit: async (issueId: string, formData: FormData) => {
+    const res = await apiClient.post(`/submit/${issueId}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data?.data ?? res.data;
+  },
+
+  cancel: async (collectionId: string) => {
+    const res = await apiClient.delete(`/collections/${collectionId}/cancel`);
+    return res.data?.data ?? res.data;
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Rewards API
+// ---------------------------------------------------------------------------
+
+export interface Reward {
+  id: string;
+  name: string;
+  description: string | null;
+  cost_in_points: number;
+  reward_type: string | null;
+  is_available: boolean;
+}
+
+export const rewardsApi = {
+  list: async (): Promise<Reward[]> => {
+    const res = await apiClient.get("/rewards");
+    const data = res.data?.data;
+    return data?.rewards ?? data ?? [];
+  },
+
+  redeem: async (rewardId: string, quantity = 1) => {
+    const res = await apiClient.post(`/rewards/${rewardId}/redeem`, {
+      quantity,
+    });
+    return res.data.data;
+  },
+
+  myRedemptions: async () => {
+    const res = await apiClient.get("/rewards/me/redemptions");
+    const data = res.data?.data;
+    return data?.redemptions ?? data ?? [];
   },
 };
 

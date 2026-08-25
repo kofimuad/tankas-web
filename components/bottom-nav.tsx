@@ -2,57 +2,71 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Icon, type IconName } from "@/components/ui/icon";
+import { cn } from "@/lib/utils";
 
-const navItems = [
-  { href: "/dashboard", icon: "⬛", label: "Home" },
-  { href: "/issues", icon: "📍", label: "Issues" },
-  { href: "/report", icon: "➕", label: "Report", primary: true },
-  { href: "/leaderboard", icon: "🏆", label: "Ranks" },
-  { href: "/profile", icon: "👤", label: "Profile" },
+const items: { href: string; icon: IconName; label: string }[] = [
+  { href: "/dashboard", icon: "home", label: "Home" },
+  { href: "/issues", icon: "pin", label: "Issues" },
+  { href: "/leaderboard", icon: "trophy", label: "Ranks" },
+  { href: "/profile", icon: "user", label: "Profile" },
 ];
 
+/** Floating capsule tab bar. Report sits in the middle as a raised action. */
 export function BottomNav() {
-  const path = usePathname();
+  const pathname = usePathname();
+  const isActive = (href: string) =>
+    pathname === href || pathname.startsWith(`${href}/`);
+
+  const tab = (item: (typeof items)[number]) => {
+    const active = isActive(item.href);
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "flex h-full flex-1 flex-col items-center justify-center gap-0.5 rounded-3xl transition-colors",
+          active ? "bg-primary-soft" : "hover:bg-surface-2",
+        )}
+      >
+        <Icon
+          name={item.icon}
+          size={20}
+          className={active ? "text-primary-ink" : "text-ink-muted"}
+        />
+        <span
+          className={cn(
+            "text-[10px]",
+            active ? "font-semibold text-primary-ink" : "text-ink-muted",
+          )}
+        >
+          {item.label}
+        </span>
+      </Link>
+    );
+  };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#0e1a13]/95 backdrop-blur-md border-t border-white/8 flex items-center justify-around px-2 py-2 md:hidden">
-      {navItems.map((item) => {
-        const active = path === item.href;
-        if (item.primary) {
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="flex flex-col items-center -mt-5"
-            >
-              <div className="w-14 h-14 bg-[#38e07b] rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-[#38e07b]/30 hover:scale-105 transition-transform active:scale-95">
-                {item.icon}
-              </div>
-              <span className="text-[10px] text-white/40 mt-1">
-                {item.label}
-              </span>
-            </Link>
-          );
-        }
-        return (
+    <nav
+      aria-label="Primary"
+      className="safe-bottom fixed inset-x-0 bottom-0 z-50 px-4 pb-3 lg:hidden"
+    >
+      <div className="glass mx-auto flex h-15 max-w-md items-center gap-1 rounded-full border border-border p-1.5 shadow-[0_6px_20px_-4px_rgb(14_26_19/0.22)]">
+        {items.slice(0, 2).map(tab)}
+
+        <div className="flex h-full flex-1 items-center justify-center">
           <Link
-            key={item.href}
-            href={item.href}
-            className="flex flex-col items-center gap-1 px-3 py-1"
+            href="/report"
+            aria-label="Report an issue"
+            className="grid size-11 place-items-center rounded-full bg-primary shadow-[0_4px_12px_-2px_rgb(56_224_123/0.4)] transition-transform active:scale-95"
           >
-            <span className={`text-xl ${active ? "" : "opacity-40"}`}>
-              {item.icon}
-            </span>
-            <span
-              className={`text-[10px] font-medium transition-colors ${
-                active ? "text-[#38e07b]" : "text-white/40"
-              }`}
-            >
-              {item.label}
-            </span>
+            <Icon name="plus" size={22} className="text-on-primary" />
           </Link>
-        );
-      })}
+        </div>
+
+        {items.slice(2).map(tab)}
+      </div>
     </nav>
   );
 }

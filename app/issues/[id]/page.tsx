@@ -1,429 +1,453 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
-import { AuthGuard } from "@/components/auth-guard";
-import { AppNavbar } from "@/components/app-navbar";
-import { BottomNav } from "@/components/bottom-nav";
-import { BadgeTier } from "@/components/badge-tier";
-import { issuesApi, pledgesApi, volunteersApi, Issue, Pledge } from "@/lib/api";
-import { useAuth } from "@/lib/auth-context";
+import { use, useCallback, useEffect, useState } from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { AuthGuard } from "@/components/auth-guard";
+import { AppShell } from "@/components/app-shell";
+import { Icon } from "@/components/ui/icon";
+import { Pill } from "@/components/ui/pill";
+import {
+  DIFFICULTY,
+  PRIORITY,
+  STATUS,
+  type Difficulty,
+  type IssueStatus,
+  type Priority,
+} from "@/lib/design";
+import {
+  commentsApi,
+  issuesApi,
+  pledgesApi,
+  volunteersApi,
+  type Comment,
+  type Issue,
+  type Pledge,
+} from "@/lib/api";
+import { cn } from "@/lib/utils";
 
-const difficultyColor = {
-  easy: "bg-green-500/15 text-green-400 border-green-500/30",
-  medium: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
-  hard: "bg-red-500/15 text-red-400 border-red-500/30",
-};
-
-const priorityColor = {
-  low: "bg-blue-500/15 text-blue-400",
-  medium: "bg-orange-500/15 text-orange-400",
-  high: "bg-red-500/15 text-red-400",
-};
-
-function PledgeModal({
-  issueId,
-  onClose,
-  onSuccess,
-}: {
-  issueId: string;
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
-  const [type, setType] = useState("money");
-  const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState("");
-  const [quantity, setQuantity] = useState("1");
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await pledgesApi.create(issueId, {
-        pledge_type: type,
-        description,
-        quantity: parseInt(quantity),
-        amount: type === "money" ? parseFloat(amount) : undefined,
-      });
-      toast.success("Pledge created! Thank you for your support 🙌");
-      onSuccess();
-      onClose();
-    } catch (err: any) {
-      toast.error(err.response?.data?.detail || "Failed to create pledge");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+function apiError(err: unknown, fallback: string) {
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-end md:items-center justify-center p-4">
-      <div className="bg-[#0e1a13] border border-white/10 rounded-2xl w-full max-w-md p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="font-display text-xl font-700 text-white">
-            Make a Pledge
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-white/40 hover:text-white text-xl"
-          >
-            ✕
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Type selector */}
-          <div className="grid grid-cols-2 gap-2">
-            {["money", "equipment", "volunteer", "other"].map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setType(t)}
-                className={`py-2 px-3 rounded-xl text-sm font-medium border transition-all ${
-                  type === t
-                    ? "bg-[#38e07b] border-[#38e07b] text-[#0e1a13] font-600"
-                    : "border-white/10 text-white/50 hover:border-white/20 hover:text-white"
-                }`}
-              >
-                {t === "money"
-                  ? "💰 Money"
-                  : t === "equipment"
-                    ? "🛠️ Equipment"
-                    : t === "volunteer"
-                      ? "🙋 Volunteer"
-                      : "💡 Other"}
-              </button>
-            ))}
-          </div>
-
-          {type === "money" && (
-            <div>
-              <label className="block text-sm text-white/60 mb-2">
-                Amount (GHS)
-              </label>
-              <input
-                type="number"
-                required
-                min="1"
-                placeholder="20"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-[#38e07b]/50"
-              />
-            </div>
-          )}
-
-          {type === "equipment" && (
-            <div>
-              <label className="block text-sm text-white/60 mb-2">
-                Quantity
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#38e07b]/50"
-              />
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm text-white/60 mb-2">
-              Description
-            </label>
-            <input
-              type="text"
-              required
-              placeholder={
-                type === "money"
-                  ? "GHS 20 donation"
-                  : type === "equipment"
-                    ? "10 trash bags"
-                    : type === "volunteer"
-                      ? "I'll bring my truck on Saturday"
-                      : "What are you pledging?"
-              }
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-[#38e07b]/50"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-[#38e07b] text-[#0e1a13] font-display font-700 py-3 rounded-xl hover:bg-[#38e07b]/90 transition-all disabled:opacity-50"
-          >
-            {loading ? "Submitting..." : "Submit Pledge"}
-          </button>
-        </form>
-      </div>
-    </div>
+    (err as { response?: { data?: { detail?: string } } })?.response?.data
+      ?.detail ?? fallback
   );
 }
 
-function IssueDetailContent() {
-  const params = useParams();
+function IssueDetail({ issueId }: { issueId: string }) {
   const router = useRouter();
-  const { user } = useAuth();
-  const issueId = params.id as string;
-
   const [issue, setIssue] = useState<Issue | null>(null);
-  const [pledgeData, setPledgeData] = useState<any>(null);
+  const [pledges, setPledges] = useState<Pledge[]>([]);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
-  const [volunteering, setVolunteering] = useState(false);
-  const [showPledgeModal, setShowPledgeModal] = useState(false);
+  const [joining, setJoining] = useState(false);
+  const [pledgeOpen, setPledgeOpen] = useState(false);
 
-  const loadData = async () => {
+  const load = useCallback(async () => {
     try {
-      const [issueData, pledges] = await Promise.all([
+      const [issueData, pledgeData, commentData] = await Promise.all([
         issuesApi.getById(issueId),
-        pledgesApi.getByIssue(issueId),
+        pledgesApi.getByIssue(issueId).catch(() => null),
+        commentsApi.getByIssue(issueId).catch(() => null),
       ]);
       setIssue(issueData);
-      setPledgeData(pledges);
+      setPledges(pledgeData?.pledges ?? []);
+      setComments(commentData?.comments ?? []);
     } catch {
-      toast.error("Failed to load issue");
+      toast.error("Could not load that issue.");
       router.push("/issues");
     } finally {
       setLoading(false);
     }
-  };
+  }, [issueId, router]);
 
   useEffect(() => {
-    loadData();
-  }, [issueId]);
+    load();
+  }, [load]);
 
-  const handleVolunteer = async () => {
-    setVolunteering(true);
+  const join = async () => {
+    setJoining(true);
     try {
       await volunteersApi.join(issueId);
-      toast.success("You've joined the cleanup group! 🧹");
-    } catch (err: any) {
-      toast.error(err.response?.data?.detail || "Failed to join");
+      toast.success("You've joined the cleanup group.");
+      load();
+    } catch (err) {
+      toast.error(apiError(err, "Could not join this cleanup."));
     } finally {
-      setVolunteering(false);
+      setJoining(false);
+    }
+  };
+
+  const postComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const content = draft.trim();
+    if (!content) return;
+    setDraft("");
+    try {
+      const created = await commentsApi.create(issueId, content);
+      setComments((c) => [created, ...c]);
+    } catch (err) {
+      setDraft(content);
+      toast.error(apiError(err, "Could not post that comment."));
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0e1a13] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[#38e07b] border-t-transparent rounded-full animate-spin" />
+      <div className="mx-auto w-full max-w-2xl space-y-4 p-4">
+        <div className="skeleton h-62" />
+        <div className="skeleton h-40" />
       </div>
     );
   }
 
   if (!issue) return null;
 
-  return (
-    <div className="min-h-screen bg-[#0e1a13] pb-32 md:pb-8">
-      <AppNavbar />
+  const status = STATUS[(issue.status as IssueStatus) ?? "open"] ?? STATUS.open;
+  const priority = PRIORITY[(issue.priority as Priority) ?? "medium"];
+  const difficulty = DIFFICULTY[(issue.difficulty as Difficulty) ?? "medium"];
+  const labels = issue.ai_labels ?? [];
 
-      <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 space-y-6">
-        {/* Back */}
+  return (
+    <div className="mx-auto w-full max-w-2xl pb-24 lg:pb-8">
+      <div className="relative h-62 w-full bg-surface-2 lg:rounded-b-xl lg:overflow-hidden">
+        {issue.picture_url && (
+          <Image
+            src={issue.picture_url}
+            alt=""
+            fill
+            sizes="(min-width: 1024px) 672px, 100vw"
+            className="object-cover"
+            priority
+          />
+        )}
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-white/40 hover:text-white text-sm transition-colors"
+          aria-label="Go back"
+          className="glass absolute left-4 top-4 grid size-9.5 place-items-center rounded-full text-ink"
         >
-          ← Back
+          <Icon name="back" size={18} />
         </button>
+      </div>
 
-        {/* Hero image */}
-        <div className="relative rounded-2xl overflow-hidden h-64 md:h-80">
-          <img
-            src={issue.picture_url}
-            alt={issue.title}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          <div className="absolute bottom-4 left-4 flex gap-2 flex-wrap">
-            <span
-              className={`text-xs px-2.5 py-1 rounded-full border font-medium ${difficultyColor[issue.difficulty]}`}
-            >
-              {issue.difficulty}
-            </span>
-            <span
-              className={`text-xs px-2.5 py-1 rounded-full font-medium ${priorityColor[issue.priority]}`}
-            >
-              {issue.priority} priority
-            </span>
-            <span className="text-xs px-2.5 py-1 rounded-full bg-[#38e07b]/20 text-[#38e07b] border border-[#38e07b]/30 font-600">
-              +{issue.points_assigned} pts
-            </span>
-          </div>
+      <div className="space-y-5 px-4 py-4.5 lg:px-0">
+        <div className="flex flex-wrap gap-1.5">
+          <Pill label={status.label} {...swatch(status)} />
+          {priority && (
+            <Pill label={`${priority.label} priority`} {...swatch(priority)} />
+          )}
+          {difficulty && <Pill label={difficulty.label} {...swatch(difficulty)} />}
         </div>
 
-        {/* Title + status */}
-        <div>
-          <div className="flex items-start justify-between gap-4 mb-2">
-            <h1 className="font-display text-2xl md:text-3xl font-700 text-white leading-snug">
-              {issue.title}
-            </h1>
-            <span
-              className={`text-xs px-3 py-1 rounded-full whitespace-nowrap font-medium mt-1 ${
-                issue.status === "open"
-                  ? "bg-[#38e07b]/15 text-[#38e07b]"
-                  : issue.status === "resolved"
-                    ? "bg-slate-500/15 text-slate-400"
-                    : "bg-yellow-500/15 text-yellow-400"
-              }`}
-            >
-              {issue.status.replace("_", " ")}
+        <div className="flex items-start justify-between gap-4">
+          <h1 className="font-display text-2xl font-bold leading-tight text-ink">
+            {issue.title}
+          </h1>
+          <span className="shrink-0 text-right">
+            <span className="numeric block text-xl font-bold text-primary-ink">
+              {issue.points_assigned}
             </span>
-          </div>
-          <p className="text-white/50 leading-relaxed">{issue.description}</p>
-          <p className="text-white/20 text-sm mt-3">
-            📍 {issue.latitude.toFixed(4)}, {issue.longitude.toFixed(4)} ·{" "}
-            {new Date(issue.created_at).toLocaleDateString("en-GB", {
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })}
+            <span className="block text-[10px] text-ink-muted">points</span>
+          </span>
+        </div>
+
+        {issue.description && (
+          <p className="text-sm leading-relaxed text-ink-muted">
+            {issue.description}
           </p>
-        </div>
+        )}
 
-        {/* AI labels */}
-        {issue.ai_labels && issue.ai_labels.length > 0 && (
-          <div>
-            <p className="text-white/30 text-xs mb-2 uppercase tracking-widest">
-              AI Detected
+        {labels.length > 0 && (
+          <section className="space-y-2.5 rounded-lg border border-border bg-surface p-3.5">
+            <p className="flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.06em] text-ink-muted">
+              <Icon name="scan" size={15} className="text-primary-ink" />
+              AI DETECTION
+              {issue.ai_confidence_score ? (
+                <span className="ml-auto font-normal">
+                  {Math.round(issue.ai_confidence_score * 100)}% confidence
+                </span>
+              ) : null}
             </p>
-            <div className="flex flex-wrap gap-2">
-              {issue.ai_labels.map((label) => (
+            <div className="flex flex-wrap gap-1.5">
+              {labels.map((label) => (
                 <span
                   key={label}
-                  className="text-xs px-3 py-1 bg-white/5 border border-white/10 rounded-full text-white/50"
+                  className="rounded-full bg-surface-2 px-2.5 py-1.5 text-[11px] font-medium text-ink"
                 >
                   {label}
                 </span>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
-        {/* Pledges summary */}
-        {pledgeData && (
-          <div className="bg-white/4 border border-white/8 rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display text-lg font-700 text-white">
-                Pledges
-              </h2>
-              {issue.status === "open" && (
-                <button
-                  onClick={() => setShowPledgeModal(true)}
-                  className="text-sm bg-[#38e07b]/15 border border-[#38e07b]/30 text-[#38e07b] px-4 py-1.5 rounded-full hover:bg-[#38e07b]/25 transition-colors"
+        {pledges.length > 0 && (
+          <section className="space-y-2.5">
+            <h2 className="font-display text-base font-semibold text-ink">
+              Pledges
+            </h2>
+            {pledges.map((p) => (
+              <div
+                key={p.id}
+                className="flex items-center gap-2.5 rounded-md border border-border bg-surface p-3"
+              >
+                <span className="grid size-8.5 shrink-0 place-items-center rounded-sm bg-primary-soft">
+                  <Icon
+                    name={p.pledge_type === "money" ? "money" : "package"}
+                    size={16}
+                    className="text-primary-ink"
+                  />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-semibold text-ink">
+                    {p.description || p.pledge_type}
+                  </span>
+                  <span className="block text-[11px] capitalize text-ink-muted">
+                    {p.pledger_name ? `${p.pledger_name} · ` : ""}
+                    {p.pledge_type}
+                  </span>
+                </span>
+                <span
+                  className={cn(
+                    "shrink-0 text-[11px] font-semibold capitalize",
+                    p.status === "fulfilled"
+                      ? "text-status-open"
+                      : "text-status-review",
+                  )}
                 >
-                  + Pledge
-                </button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <div className="text-center">
-                <p className="font-display text-2xl font-700 text-[#38e07b]">
-                  GHS {pledgeData.total_money_ghs}
-                </p>
-                <p className="text-white/30 text-xs">Money pledged</p>
+                  {p.status}
+                </span>
               </div>
-              <div className="text-center">
-                <p className="font-display text-2xl font-700 text-white">
-                  {pledgeData.summary?.equipment || 0}
-                </p>
-                <p className="text-white/30 text-xs">Equipment</p>
-              </div>
-              <div className="text-center">
-                <p className="font-display text-2xl font-700 text-white">
-                  {pledgeData.total_pledges}
-                </p>
-                <p className="text-white/30 text-xs">Total pledges</p>
-              </div>
-            </div>
-
-            {pledgeData.pledges?.length > 0 && (
-              <div className="space-y-2 border-t border-white/8 pt-4">
-                {pledgeData.pledges
-                  .slice(0, 5)
-                  .map((pledge: Pledge & { pledger_name: string }) => (
-                    <div
-                      key={pledge.id}
-                      className="flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">
-                          {pledge.pledge_type === "money"
-                            ? "💰"
-                            : pledge.pledge_type === "equipment"
-                              ? "🛠️"
-                              : pledge.pledge_type === "volunteer"
-                                ? "🙋"
-                                : "💡"}
-                        </span>
-                        <div>
-                          <p className="text-white/70 text-sm">
-                            {pledge.description}
-                          </p>
-                          <p className="text-white/30 text-xs">
-                            {pledge.pledger_name}
-                          </p>
-                        </div>
-                      </div>
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded-full ${
-                          pledge.status === "fulfilled"
-                            ? "bg-green-500/15 text-green-400"
-                            : "bg-white/8 text-white/40"
-                        }`}
-                      >
-                        {pledge.status}
-                      </span>
-                    </div>
-                  ))}
-              </div>
-            )}
-          </div>
+            ))}
+          </section>
         )}
+
+        <section className="space-y-3">
+          <h2 className="font-display text-base font-semibold text-ink">
+            Comments{comments.length ? ` (${comments.length})` : ""}
+          </h2>
+
+          <form onSubmit={postComment} className="flex gap-2">
+            <input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="Add a comment…"
+              className="min-w-0 flex-1 rounded-md border border-border bg-surface px-3.5 py-2.5 text-[13px] text-ink outline-none placeholder:text-ink-muted"
+            />
+            <button
+              type="submit"
+              disabled={!draft.trim()}
+              aria-label="Post comment"
+              className="grid size-10.5 shrink-0 place-items-center rounded-md bg-primary text-on-primary disabled:opacity-40"
+            >
+              <Icon name="send" size={16} />
+            </button>
+          </form>
+
+          {comments.map((c) => (
+            <div key={c.comment_id} className="flex gap-2.5">
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-surface-2 text-[11px] font-semibold text-ink-muted">
+                {initials(c.author.display_name || c.author.username)}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13px] font-semibold text-ink">
+                  {c.author.display_name || c.author.username}
+                </span>
+                <span className="block text-[13px] leading-relaxed text-ink-muted">
+                  {c.content}
+                </span>
+              </span>
+            </div>
+          ))}
+        </section>
       </div>
 
-      {/* Action bar */}
-      {issue.status === "open" && (
-        <div className="fixed bottom-0 left-0 right-0 bg-[#0e1a13]/95 backdrop-blur-md border-t border-white/8 p-4 flex gap-3 md:relative md:bg-transparent md:border-0 md:max-w-3xl md:mx-auto md:px-6 md:pt-0">
-          <button
-            onClick={handleVolunteer}
-            disabled={volunteering}
-            className="flex-1 bg-[#38e07b] text-[#0e1a13] font-display font-700 py-4 rounded-xl hover:bg-[#38e07b]/90 transition-all disabled:opacity-50 text-base"
-          >
-            {volunteering ? "Joining..." : "🙋 Volunteer"}
-          </button>
-          <button
-            onClick={() => setShowPledgeModal(true)}
-            className="flex-1 bg-white/8 border border-white/15 text-white font-display font-600 py-4 rounded-xl hover:bg-white/12 transition-all text-base"
-          >
-            💰 Pledge
-          </button>
-        </div>
-      )}
+      {/* Sticky action bar — the primary intent of the screen. */}
+      <div className="safe-bottom fixed inset-x-0 bottom-0 z-40 flex items-center gap-2.5 border-t border-border bg-surface px-4 pb-5 pt-3.5 lg:static lg:border-0 lg:bg-transparent lg:px-0 lg:pt-2">
+        <button
+          type="button"
+          onClick={() => setPledgeOpen(true)}
+          aria-label="Make a pledge"
+          className="grid size-13 shrink-0 place-items-center rounded-md bg-surface-2 text-ink"
+        >
+          <Icon name="heart" size={20} />
+        </button>
+        <button
+          onClick={join}
+          disabled={joining || issue.status === "resolved"}
+          className="flex h-13 flex-1 items-center justify-center gap-2 rounded-md bg-primary text-[15px] font-semibold text-on-primary transition-opacity hover:opacity-90 disabled:opacity-50"
+        >
+          <Icon name="users" size={18} />
+          {issue.status === "resolved"
+            ? "Already resolved"
+            : joining
+              ? "Joining…"
+              : "Join cleanup"}
+        </button>
+      </div>
 
-      {showPledgeModal && (
-        <PledgeModal
+      {pledgeOpen && (
+        <PledgeDialog
           issueId={issueId}
-          onClose={() => setShowPledgeModal(false)}
-          onSuccess={loadData}
+          onClose={() => setPledgeOpen(false)}
+          onCreated={load}
         />
       )}
-
-      <BottomNav />
     </div>
   );
 }
 
-export default function IssueDetailPage() {
+const PLEDGE_TYPES = ["money", "equipment", "volunteer", "other"] as const;
+
+/** Bottom sheet on mobile, centred dialog from `sm` up. */
+function PledgeDialog({
+  issueId,
+  onClose,
+  onCreated,
+}: {
+  issueId: string;
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [type, setType] = useState<(typeof PLEDGE_TYPES)[number]>("money");
+  const [description, setDescription] = useState("");
+  const [amount, setAmount] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await pledgesApi.create(issueId, {
+        pledge_type: type,
+        description,
+        ...(type === "money" && amount ? { amount: Number(amount) } : {}),
+      });
+      toast.success("Pledge recorded. Thank you.");
+      onCreated();
+      onClose();
+    } catch (err) {
+      toast.error(apiError(err, "Could not create that pledge."));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Make a pledge"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
+      onClick={onClose}
+    >
+      <form
+        onClick={(e) => e.stopPropagation()}
+        onSubmit={submit}
+        className="w-full max-w-md space-y-4 rounded-t-xl bg-surface p-5 sm:rounded-xl"
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-lg font-bold text-ink">
+            Make a pledge
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="grid size-8 place-items-center rounded-full bg-surface-2 text-ink"
+          >
+            <Icon name="close" size={16} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          {PLEDGE_TYPES.map((t) => (
+            <button
+              key={t}
+              type="button"
+              aria-pressed={type === t}
+              onClick={() => setType(t)}
+              className={cn(
+                "rounded-md border py-2.5 text-xs font-semibold capitalize transition-colors",
+                type === t
+                  ? "border-primary bg-primary-soft text-primary-ink"
+                  : "border-border bg-surface text-ink-muted",
+              )}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+
+        {type === "money" && (
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-semibold tracking-[0.04em] text-ink-muted">
+              AMOUNT (GHS)
+            </span>
+            <input
+              type="number"
+              min="1"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="rounded-md border border-border bg-surface px-3.5 py-3 text-sm text-ink outline-none"
+            />
+          </label>
+        )}
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[11px] font-semibold tracking-[0.04em] text-ink-muted">
+            DESCRIPTION
+          </span>
+          <textarea
+            rows={2}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="What are you pledging?"
+            className="resize-none rounded-md border border-border bg-surface px-3.5 py-3 text-sm text-ink outline-none placeholder:text-ink-muted"
+          />
+        </label>
+
+        <button
+          type="submit"
+          disabled={saving}
+          className="h-12 w-full rounded-md bg-primary text-sm font-semibold text-on-primary disabled:opacity-60"
+        >
+          {saving ? "Saving…" : "Confirm pledge"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+const swatch = (s: { text: string; dot: string; soft: string }) => ({
+  text: s.text,
+  dot: s.dot,
+  soft: s.soft,
+});
+
+function initials(name: string) {
+  return name
+    .split(" ")
+    .map((p) => p[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+export default function IssueDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  // `params` is a promise in this version — unwrapped with React's `use`.
+  const { id } = use(params);
   return (
     <AuthGuard>
-      <IssueDetailContent />
+      <AppShell>
+        <IssueDetail issueId={id} />
+      </AppShell>
     </AuthGuard>
   );
 }

@@ -3,150 +3,123 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
+import {
+  AuthField,
+  AuthLayout,
+  authButtonClass,
+  authInputClass,
+} from "@/components/auth-layout";
+import { Icon } from "@/components/ui/icon";
 
 export default function SignupPage() {
   const router = useRouter();
   const { signup } = useAuth();
-  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     username: "",
     email: "",
     display_name: "",
     password: "",
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       const { email } = await signup(form);
-      toast.success(
-        "Account created! Check your email for a verification code.",
-      );
+      toast.success("Account created. Check your email for a code.");
       router.push(`/verify-email?email=${encodeURIComponent(email)}`);
-    } catch (err: any) {
-      toast.error(
-        err.response?.data?.detail || "Signup failed. Please try again.",
-      );
+    } catch (err) {
+      const detail =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail ?? "Could not create your account.";
+      toast.error(detail);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#0e1a13] flex">
-      {/* Left — form */}
-      <div className="flex-1 flex flex-col justify-center px-8 py-12 max-w-lg mx-auto w-full">
-        <Link
-          href="/"
-          className="font-display font-800 text-xl text-white mb-12 block"
-        >
-          🌍 Tankas
-        </Link>
-
-        <h1 className="font-display text-4xl font-700 text-white mb-2">
-          Join the movement
-        </h1>
-        <p className="text-white/50 mb-10">
-          Already have an account?{" "}
-          <Link href="/login" className="text-[#38e07b] hover:underline">
-            Log in
+    <AuthLayout
+      title="Join Tankas"
+      subtitle="Report waste, join cleanups, earn rewards."
+      footer={
+        <>
+          <span className="text-ink-muted">Already have an account?</span>
+          <Link href="/login" className="font-bold text-primary-ink">
+            Sign in
           </Link>
-        </p>
+        </>
+      }
+    >
+      <form onSubmit={submit} className="flex flex-col gap-3.5">
+        <AuthField label="USERNAME" icon="user">
+          <input
+            value={form.username}
+            onChange={(e) => setForm({ ...form, username: e.target.value })}
+            autoComplete="username"
+            required
+            minLength={3}
+            placeholder="kofim"
+            className={authInputClass}
+          />
+        </AuthField>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm text-white/60 mb-2">Username</label>
-            <input
-              type="text"
-              required
-              placeholder="bismark123"
-              value={form.username}
-              onChange={(e) => setForm({ ...form, username: e.target.value })}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-[#38e07b]/50 transition-colors"
-            />
-          </div>
+        <AuthField label="EMAIL" icon="send">
+          <input
+            type="email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            autoComplete="email"
+            required
+            placeholder="you@example.com"
+            className={authInputClass}
+          />
+        </AuthField>
 
-          <div>
-            <label className="block text-sm text-white/60 mb-2">Email</label>
-            <input
-              type="email"
-              required
-              placeholder="you@example.com"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-[#38e07b]/50 transition-colors"
-            />
-          </div>
+        <AuthField label="DISPLAY NAME" icon="sparkles">
+          <input
+            value={form.display_name}
+            onChange={(e) => setForm({ ...form, display_name: e.target.value })}
+            autoComplete="name"
+            placeholder="Kofi Mensah"
+            className={authInputClass}
+          />
+        </AuthField>
 
-          <div>
-            <label className="block text-sm text-white/60 mb-2">
-              Display Name <span className="text-white/30">(optional)</span>
-            </label>
-            <input
-              type="text"
-              placeholder="Bismark Antwi"
-              value={form.display_name}
-              onChange={(e) =>
-                setForm({ ...form, display_name: e.target.value })
-              }
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-[#38e07b]/50 transition-colors"
-            />
-          </div>
+        <AuthField
+          label="PASSWORD"
+          icon="lock"
+          trailing={
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="shrink-0 text-ink-muted"
+            >
+              <Icon name="eye" size={17} />
+            </button>
+          }
+        >
+          <input
+            type={showPassword ? "text" : "password"}
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            autoComplete="new-password"
+            required
+            minLength={8}
+            placeholder="At least 8 characters"
+            className={authInputClass}
+          />
+        </AuthField>
 
-          <div>
-            <label className="block text-sm text-white/60 mb-2">Password</label>
-            <input
-              type="password"
-              required
-              placeholder="8+ characters with uppercase and numbers"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-[#38e07b]/50 transition-colors"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-[#38e07b] text-[#0e1a13] font-display font-700 text-base py-4 rounded-xl hover:bg-[#38e07b]/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-          >
-            {loading ? "Creating account..." : "Create account →"}
-          </button>
-        </form>
-
-        <p className="text-white/20 text-xs text-center mt-8">
-          By signing up you agree to help keep Ghana clean 🌿
-        </p>
-      </div>
-
-      {/* Right — visual panel (hidden on mobile) */}
-      <div className="hidden lg:flex flex-1 bg-[#38e07b]/10 border-l border-white/5 flex-col justify-center items-center p-16 relative overflow-hidden">
-        <div className="absolute inset-0">
-          <div className="absolute top-1/3 left-1/3 w-64 h-64 bg-[#38e07b]/10 rounded-full blur-3xl" />
-        </div>
-        <div className="relative z-10 text-center">
-          <div className="text-8xl mb-6">🌍</div>
-          <h2 className="font-display text-3xl font-700 text-white mb-4">
-            Snap. Clean. Earn.
-          </h2>
-          <div className="space-y-4 text-left mt-8">
-            {[
-              { icon: "📸", text: "Report issues, earn 15 pts instantly" },
-              { icon: "🧹", text: "Join cleanups, earn up to 60 pts" },
-              { icon: "💰", text: "Redeem for GHS via Mobile Money" },
-              { icon: "🏆", text: "Climb the leaderboard" },
-            ].map((item) => (
-              <div key={item.text} className="flex items-center gap-3">
-                <span className="text-2xl">{item.icon}</span>
-                <span className="text-white/60">{item.text}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
+        <button type="submit" disabled={loading} className={authButtonClass}>
+          {loading ? "Creating account…" : "Create account"}
+        </button>
+      </form>
+    </AuthLayout>
   );
 }

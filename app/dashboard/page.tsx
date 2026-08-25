@@ -4,69 +4,65 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { AuthGuard } from "@/components/auth-guard";
-import { AppNavbar } from "@/components/app-navbar";
-import { BottomNav } from "@/components/bottom-nav";
-import { BadgeTier } from "@/components/badge-tier";
+import { AppShell } from "@/components/app-shell";
+import { TierHero } from "@/components/tier-hero";
 import { IssueCard } from "@/components/issue-card";
+import { StatTile } from "@/components/ui/stat-tile";
+import { Icon } from "@/components/ui/icon";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { TIER, formatKg, tierForPoints } from "@/lib/design";
 import {
   issuesApi,
   leaderboardApi,
   profileApi,
-  Issue,
-  DashboardStats,
+  type DashboardStats,
+  type Issue,
 } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
-function StatsCard({
-  label,
-  value,
-  icon,
-  sub,
-}: {
-  label: string;
-  value: string | number;
-  icon: string;
-  sub?: string;
-}) {
-  return (
-    <div className="bg-white/4 border border-white/8 rounded-2xl p-5 flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <span className="text-white/40 text-sm">{label}</span>
-        <span className="text-2xl">{icon}</span>
-      </div>
-      <p className="font-display text-3xl font-700 text-white">{value}</p>
-      {sub && <p className="text-white/30 text-xs">{sub}</p>}
-    </div>
-  );
-}
+// Accra city centre — used when the browser denies or lacks geolocation.
+const FALLBACK_COORDS = { lat: 5.6037, lng: -0.187 };
+
+type RankRow = {
+  rank: number;
+  username: string;
+  display_name?: string | null;
+  metric_value: number;
+};
 
 function DashboardContent() {
   const { user } = useAuth();
-  const [nearbyIssues, setNearbyIssues] = useState<Issue[]>([]);
-  const [rank, setRank] = useState<number | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [nearby, setNearby] = useState<Issue[]>([]);
+  const [rankings, setRankings] = useState<RankRow[]>([]);
+  const [rank, setRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
 
-    // Fetched on its own rather than alongside the map data: a failure here
-    // should blank the counters, not the nearby-issues list.
+    // Counters load independently of the map data: a failure in one should not
+    // blank the other.
     profileApi
       .getDashboard()
       .then((d) => setStats(d?.stats ?? null))
       .catch(() => setStats(null));
 
-    // Load nearby issues using default Accra coords if no geolocation
-    const loadData = async (lat = 5.6037, lng = -0.187) => {
+    leaderboardApi
+      .get("points", "global")
+      .then((d) => setRankings((d?.rankings ?? []).slice(0, 4)))
+      .catch(() => setRankings([]));
+
+    const load = async (lat: number, lng: number) => {
       try {
         const [issues, rankData] = await Promise.all([
           issuesApi.getNearby(lat, lng, 20),
           leaderboardApi.getUserRank(user.id, "points"),
         ]);
-        setNearbyIssues(issues.slice(0, 6));
+        setNearby(issues.slice(0, 4));
         setRank(rankData?.rank ?? null);
       } catch {
-        // fallback silently
+        // Leave the empty state in place.
       } finally {
         setLoading(false);
       }
@@ -74,210 +70,245 @@ function DashboardContent() {
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => loadData(pos.coords.latitude, pos.coords.longitude),
-        () => loadData(),
+        (pos) => load(pos.coords.latitude, pos.coords.longitude),
+        () => load(FALLBACK_COORDS.lat, FALLBACK_COORDS.lng),
       );
     } else {
-      loadData();
+      load(FALLBACK_COORDS.lat, FALLBACK_COORDS.lng);
     }
   }, [user]);
 
   if (!user) return null;
 
-  const pointsToNext =
-    user.badge_tier === "bronze"
-      ? 100 - user.total_points
-      : user.badge_tier === "silver"
-        ? 500 - user.total_points
-        : null;
-
-  const progressPct =
-    user.badge_tier === "bronze"
-      ? Math.min((user.total_points / 100) * 100, 100)
-      : user.badge_tier === "silver"
-        ? Math.min(((user.total_points - 100) / 400) * 100, 100)
-        : 100;
+  const name = user.display_name || user.username;
+  const tier = tierForPoints(user.total_points);
 
   return (
-    <div className="min-h-screen bg-[#0e1a13] pb-24 md:pb-8">
-      <AppNavbar />
-
-      <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-8">
-        {/* Welcome banner */}
-        <div className="bg-gradient-to-r from-[#38e07b]/15 to-transparent border border-[#38e07b]/20 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="font-display text-2xl md:text-3xl font-700 text-white mb-1">
-              Hey, {user.display_name || user.username}! 👋
-            </h1>
-            <div className="flex items-center gap-3">
-              <BadgeTier tier={user.badge_tier} size="sm" />
-              {pointsToNext !== null && pointsToNext > 0 && (
-                <span className="text-white/40 text-sm">
-                  {pointsToNext} pts to next tier
-                </span>
-              )}
-            </div>
-
-            {/* Progress bar */}
-            <div className="mt-3 w-48 h-1.5 bg-white/10 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-[#38e07b] rounded-full transition-all duration-700"
-                style={{ width: `${progressPct}%` }}
-              />
-            </div>
-          </div>
-
-          <Link
-            href="/report"
-            className="self-start md:self-auto bg-[#38e07b] text-[#0e1a13] font-display font-700 px-6 py-3 rounded-xl hover:bg-[#38e07b]/90 transition-all hover:scale-105 active:scale-95 text-sm"
-          >
-            + Report Issue
-          </Link>
+    <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-4 lg:px-8 lg:py-7">
+      {/* Mobile identity header. On desktop the topbar carries these actions. */}
+      <header className="flex items-center gap-3 lg:hidden">
+        <span
+          className={cn(
+            "grid size-11 shrink-0 place-items-center rounded-full bg-surface-2 font-display text-[15px] font-bold text-primary-ink ring-2",
+            TIER[tier].ring,
+          )}
+        >
+          {initials(name)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-ink-muted">{greeting()}</p>
+          <p className="truncate font-display text-lg font-bold text-ink">
+            {name}
+          </p>
         </div>
+        <ThemeToggle />
+        <button
+          type="button"
+          aria-label="Notifications"
+          className="grid size-10 place-items-center rounded-full border border-border bg-surface text-ink"
+        >
+          <Icon name="bell" size={18} />
+        </button>
+      </header>
 
-        {/* Stats grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatsCard
-            label="Total Points"
-            value={user.total_points.toLocaleString()}
-            icon="⭐"
-            sub="Lifetime earnings"
-          />
-          <StatsCard
-            label="Issues Reported"
-            value={stats?.issues_reported ?? 0}
-            icon="📸"
-            sub="+15 pts each"
-          />
-          <StatsCard
-            label="Tasks Completed"
-            value={stats?.tasks_completed ?? 0}
-            icon="✅"
-            sub="Cleanups done"
-          />
-          <StatsCard
-            label="Community Rank"
-            value={rank ? `#${rank}` : "—"}
-            icon="🏆"
-            sub="Points leaderboard"
-          />
-        </div>
-
-        {/* Quick actions */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            {
-              href: "/report",
-              icon: "📸",
-              label: "Report Issue",
-              color: "border-[#38e07b]/30 hover:border-[#38e07b]/60",
-            },
-            {
-              href: "/issues",
-              icon: "🗺️",
-              label: "Find Issues",
-              color: "border-white/10 hover:border-white/20",
-            },
-            {
-              href: "/redeem",
-              icon: "💰",
-              label: "Redeem Points",
-              color: "border-yellow-500/30 hover:border-yellow-500/50",
-            },
-            {
-              href: "/leaderboard",
-              icon: "🏆",
-              label: "Leaderboard",
-              color: "border-white/10 hover:border-white/20",
-            },
-          ].map((action) => (
-            <Link key={action.href} href={action.href}>
-              <div
-                className={`bg-white/4 border ${action.color} rounded-xl p-4 flex flex-col items-center gap-2 transition-all hover:bg-white/6 cursor-pointer`}
-              >
-                <span className="text-2xl">{action.icon}</span>
-                <span className="text-white/70 text-xs font-medium text-center">
-                  {action.label}
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        {/* Nearby issues */}
+      <header className="hidden items-center justify-between lg:flex">
         <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display text-xl font-700 text-white">
-              Nearby Issues
-            </h2>
-            <Link
-              href="/issues"
-              className="text-[#38e07b] text-sm hover:underline"
-            >
-              View all →
-            </Link>
+          <h1 className="font-display text-[28px] font-bold text-ink">
+            {greeting()}, {name.split(" ")[0]}
+          </h1>
+          <p className="text-[13px] text-ink-muted">
+            {nearby.length} open issues near you
+            {stats?.volunteer_streak
+              ? ` · ${stats.volunteer_streak} day volunteer streak`
+              : ""}
+          </p>
+        </div>
+        {rank && (
+          <span className="flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2.5 text-xs">
+            <Icon name="trophy" size={16} className={TIER[tier].text} />
+            <span className="font-semibold text-ink">Rank #{rank}</span>
+            <span className="text-ink-muted">points</span>
+          </span>
+        )}
+      </header>
+
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="space-y-6">
+          <div className="lg:hidden">
+            <TierHero points={user.total_points} />
           </div>
 
-          {loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="bg-white/4 rounded-2xl h-52 animate-pulse"
-                />
-              ))}
-            </div>
-          ) : nearbyIssues.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {nearbyIssues.map((issue) => (
-                <IssueCard key={issue.id} issue={issue} compact />
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white/4 border border-white/8 rounded-2xl p-12 text-center">
-              <div className="text-4xl mb-3">🌿</div>
-              <p className="text-white/40">
-                No open issues nearby — your area is clean!
-              </p>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <StatTile
+              icon="flag"
+              value={stats?.issues_reported ?? 0}
+              label="Issues reported"
+            />
+            <StatTile
+              icon="check"
+              value={stats?.tasks_completed ?? 0}
+              label="Tasks done"
+            />
+            <StatTile
+              icon="leaf"
+              value={stats?.areas_cleaned ?? 0}
+              label="Areas cleaned"
+            />
+            <StatTile
+              icon="scale"
+              value={formatKg(stats?.total_kg_collected ?? 0)}
+              label="Kg collected"
+            />
+            <StatTile
+              icon="clock"
+              value={stats?.volunteer_hours ?? 0}
+              label="Volunteer hrs"
+            />
+            <StatTile
+              icon="flame"
+              value={stats?.volunteer_streak ?? 0}
+              label="Day streak"
+            />
+            <StatTile
+              icon="medal"
+              value={stats?.badges_earned ?? 0}
+              label="Badges"
+            />
+            <StatTile
+              icon="zap"
+              value={user.total_points.toLocaleString()}
+              label="Total points"
+            />
+          </div>
+
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-[17px] font-semibold text-ink lg:text-lg">
+                Nearby issues
+              </h2>
               <Link
                 href="/issues"
-                className="text-[#38e07b] text-sm mt-2 inline-block hover:underline"
+                className="flex items-center gap-1 text-xs font-semibold text-primary-ink"
               >
-                Browse all issues →
+                See all
+                <Icon name="forward" size={14} />
               </Link>
             </div>
-          )}
+
+            {loading ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {[0, 1].map((i) => (
+                  <div key={i} className="skeleton h-64" />
+                ))}
+              </div>
+            ) : nearby.length ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {nearby.map((issue) => (
+                  <IssueCard key={issue.id} issue={issue} />
+                ))}
+              </div>
+            ) : (
+              <EmptyState />
+            )}
+          </section>
         </div>
 
-        {/* Email verification banner */}
-        {!user.email_verified && (
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="text-xl">⚠️</span>
-              <p className="text-yellow-300 text-sm">
-                Your email isn&apos;t verified yet. Check your inbox for the
-                verification code.
-              </p>
-            </div>
+        <aside className="space-y-5">
+          <div className="hidden lg:block">
+            <TierHero points={user.total_points} />
+          </div>
+
+          {rankings.length > 0 && (
+            <section className="overflow-hidden rounded-lg border border-border bg-surface">
+              <div className="flex items-center justify-between border-b border-border px-3.5 py-3.5">
+                <h2 className="font-display text-[15px] font-semibold text-ink">
+                  Top warriors
+                </h2>
+                <Link href="/leaderboard" className="text-[11px] text-ink-muted">
+                  This week
+                </Link>
+              </div>
+              {rankings.map((row) => (
+                <div
+                  key={row.rank}
+                  className="flex items-center gap-2.5 border-b border-border px-3.5 py-2.5 last:border-b-0"
+                >
+                  <span className="numeric w-4 text-xs font-bold text-ink-muted">
+                    {row.rank}
+                  </span>
+                  <span className="grid size-7 place-items-center rounded-full bg-surface-2 text-[10px] font-semibold text-ink-muted">
+                    {initials(row.display_name || row.username)}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-xs font-medium text-ink">
+                    {row.display_name || row.username}
+                  </span>
+                  <span className="numeric text-[13px] font-bold text-ink">
+                    {Math.round(row.metric_value).toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </section>
+          )}
+
+          {!user.email_verified && (
             <Link
               href={`/verify-email?email=${encodeURIComponent(user.email)}`}
-              className="text-yellow-300 text-sm font-600 hover:underline whitespace-nowrap"
+              className="flex items-center gap-3 rounded-lg border border-status-review/30 bg-status-review/10 p-3.5"
             >
-              Verify →
+              <Icon
+                name="info"
+                size={18}
+                className="shrink-0 text-status-review"
+              />
+              <span className="flex-1 text-xs text-status-review">
+                Verify your email to unlock redemptions.
+              </span>
+              <Icon name="forward" size={14} className="text-status-review" />
             </Link>
-          </div>
-        )}
+          )}
+        </aside>
       </div>
-
-      <BottomNav />
     </div>
   );
+}
+
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-center gap-2 rounded-lg border border-border bg-surface px-6 py-12 text-center">
+      <Icon name="leaf" size={28} className="text-primary-ink" />
+      <p className="text-sm text-ink-muted">
+        No open issues nearby — your area is clean.
+      </p>
+      <Link href="/issues" className="text-xs font-semibold text-primary-ink">
+        Browse all issues
+      </Link>
+    </div>
+  );
+}
+
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+function initials(name: string) {
+  return name
+    .split(" ")
+    .map((p) => p[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 }
 
 export default function DashboardPage() {
   return (
     <AuthGuard>
-      <DashboardContent />
+      <AppShell>
+        <DashboardContent />
+      </AppShell>
     </AuthGuard>
   );
 }

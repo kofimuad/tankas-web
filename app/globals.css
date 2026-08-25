@@ -1,154 +1,195 @@
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
 @import "tailwindcss";
 
-@theme {
-  --font-display: "Syne", sans-serif;
-  --font-sans: "DM Sans", sans-serif;
+/* next-themes writes `class="dark"` onto <html>. */
+@custom-variant dark (&:is(.dark *));
 
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
-  --color-border: hsl(var(--border));
-  --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
-  --color-secondary: hsl(var(--secondary));
-  --color-secondary-foreground: hsl(var(--secondary-foreground));
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
-  --color-accent: hsl(var(--accent));
-  --color-accent-foreground: hsl(var(--accent-foreground));
-  --color-destructive: hsl(var(--destructive));
-  --color-destructive-foreground: hsl(var(--destructive-foreground));
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
-  --color-popover: hsl(var(--popover));
-  --color-popover-foreground: hsl(var(--popover-foreground));
+/* ---------------------------------------------------------------------------
+   Design tokens — ported 1:1 from ui.pen (theme axis `mode`: light | dark).
+   Change a value here and both themes follow; nothing below hardcodes a colour.
+   --------------------------------------------------------------------------- */
+:root {
+  --canvas: #f7f9f8;
+  --surface: #ffffff;
+  --surface-2: #eff3f1;
+  --border: #dde5e1;
+  --ink: #0e1a13;
+  --ink-muted: #5b6b62;
+
+  --primary: #38e07b;
+  --on-primary: #06110a;
+  /* Brand green fails contrast as TEXT on light. Use primary-ink for text/links. */
+  --primary-ink: #0f9d4f;
+  --primary-soft: #e4fbee;
+  --ink-surface: #0e1a13;
+  --glass: #ffffffb8;
+
+  --prio-low: #64748b;
+  --prio-med: #b45309;
+  --prio-high: #dc2626;
+
+  --diff-easy: #15803d;
+  --diff-med: #b45309;
+  --diff-hard: #7e22ce;
+
+  --status-open: #0f9d4f;
+  --status-review: #b45309;
+  --status-resolved: #1d4ed8;
+  --status-rejected: #dc2626;
+
+  --tier-bronze: #a9601f;
+  --tier-silver: #7a8388;
+  --tier-gold: #a87a08;
+
+  --danger: #dc2626;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
 }
 
-@layer base {
-  :root {
-    --background: 0 0% 98%;
-    --foreground: 150 20% 8%;
-    --card: 0 0% 100%;
-    --card-foreground: 150 20% 8%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 150 20% 8%;
-    --primary: 145 72% 55%;
-    --primary-foreground: 150 20% 8%;
-    --secondary: 150 15% 94%;
-    --secondary-foreground: 150 20% 8%;
-    --muted: 150 10% 94%;
-    --muted-foreground: 150 10% 45%;
-    --accent: 145 72% 55%;
-    --accent-foreground: 150 20% 8%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 150 15% 88%;
-    --input: 150 15% 88%;
-    --ring: 145 72% 55%;
-    --radius: 0.75rem;
+.dark {
+  --canvas: #0b120e;
+  --surface: #101a14;
+  --surface-2: #16231b;
+  --border: #223029;
+  --ink: #e8f0ea;
+  --ink-muted: #8fa396;
 
-    /* Tankas brand */
-    --tankas-green: #38e07b;
-    --tankas-green-dark: #1a7a40;
-    --tankas-dark: #0e1a13;
-    --tankas-bg: #f6f8f7;
-  }
+  --primary: #38e07b;
+  --on-primary: #06110a;
+  --primary-ink: #5be894;
+  --primary-soft: #12301f;
+  --ink-surface: #17301f;
+  --glass: #101a14bf;
 
-  .dark {
-    --background: 150 20% 6%;
-    --foreground: 150 5% 95%;
-    --card: 150 20% 9%;
-    --card-foreground: 150 5% 95%;
-    --popover: 150 20% 9%;
-    --popover-foreground: 150 5% 95%;
-    --primary: 145 72% 55%;
-    --primary-foreground: 150 20% 8%;
-    --secondary: 150 15% 14%;
-    --secondary-foreground: 150 5% 95%;
-    --muted: 150 15% 14%;
-    --muted-foreground: 150 10% 55%;
-    --accent: 145 72% 55%;
-    --accent-foreground: 150 20% 8%;
-    --destructive: 0 62% 45%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 150 15% 18%;
-    --input: 150 15% 18%;
-    --ring: 145 72% 55%;
-  }
+  --prio-low: #94a3b8;
+  --prio-med: #f59e0b;
+  --prio-high: #f87171;
+
+  --diff-easy: #4ade80;
+  --diff-med: #f59e0b;
+  --diff-hard: #c084fc;
+
+  --status-open: #5be894;
+  --status-review: #f59e0b;
+  --status-resolved: #60a5fa;
+  --status-rejected: #f87171;
+
+  --tier-bronze: #cd7f32;
+  --tier-silver: #b8c0c4;
+  --tier-gold: #ffd43b;
+
+  --danger: #f87171;
+}
+
+@theme inline {
+  --font-display: var(--font-syne), "Syne", sans-serif;
+  --font-sans: var(--font-dm-sans), "DM Sans", sans-serif;
+
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-primary-ink: var(--primary-ink);
+  --color-primary-soft: var(--primary-soft);
+  --color-ink-surface: var(--ink-surface);
+  --color-glass: var(--glass);
+
+  --color-prio-low: var(--prio-low);
+  --color-prio-med: var(--prio-med);
+  --color-prio-high: var(--prio-high);
+
+  --color-diff-easy: var(--diff-easy);
+  --color-diff-med: var(--diff-med);
+  --color-diff-hard: var(--diff-hard);
+
+  --color-status-open: var(--status-open);
+  --color-status-review: var(--status-review);
+  --color-status-resolved: var(--status-resolved);
+  --color-status-rejected: var(--status-rejected);
+
+  --color-tier-bronze: var(--tier-bronze);
+  --color-tier-silver: var(--tier-silver);
+  --color-tier-gold: var(--tier-gold);
+
+  --color-danger: var(--danger);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
 }
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: var(--border);
   }
+
   body {
-    @apply bg-background text-foreground;
-    font-family: 'DM Sans', sans-serif;
+    background-color: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-sans);
     font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
   }
+
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Syne', sans-serif;
+    font-family: var(--font-display);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 3px;
   }
 }
 
 @layer utilities {
-  /* Tankas brand utilities */
-  .font-display {
-    font-family: 'Syne', sans-serif;
-  }
-
-  .text-gradient {
-    background: linear-gradient(135deg, #38e07b 0%, #1a7a40 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .bg-tankas-green {
-    background-color: var(--tankas-green);
-  }
-
-  /* Badge tiers */
-  .badge-bronze {
-    background: linear-gradient(135deg, #cd7f32, #a0522d);
-  }
-  .badge-silver {
-    background: linear-gradient(135deg, #c0c0c0, #808080);
-  }
-  .badge-gold {
-    background: linear-gradient(135deg, #ffd700, #b8860b);
-  }
-
-  /* Difficulty colors */
-  .difficulty-easy { @apply text-green-600 bg-green-50 border-green-200; }
-  .difficulty-medium { @apply text-yellow-600 bg-yellow-50 border-yellow-200; }
-  .difficulty-hard { @apply text-red-600 bg-red-50 border-red-200; }
-
-  /* Priority colors */
-  .priority-low { @apply text-blue-600 bg-blue-50 border-blue-200; }
-  .priority-medium { @apply text-orange-600 bg-orange-50 border-orange-200; }
-  .priority-high { @apply text-red-600 bg-red-50 border-red-200; }
-
-  /* Skeleton loader */
-  .skeleton {
-    @apply animate-pulse bg-muted rounded;
-  }
-
-  /* Glass effect */
+  /* Frosted tab bar / overlay chrome. */
   .glass {
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background-color: var(--glass);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
   }
 
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 6px; }
+  .skeleton {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    background-color: var(--surface-2);
+    border-radius: var(--radius-md);
+  }
+
+  @keyframes pulse {
+    50% { opacity: 0.5; }
+  }
+
+  /* Tabular figures keep points/kg/rank from jittering as they update. */
+  .numeric {
+    font-family: var(--font-display);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb {
-    background: var(--tankas-green);
+    background: var(--border);
     border-radius: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
