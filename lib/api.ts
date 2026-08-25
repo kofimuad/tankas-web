@@ -197,6 +197,22 @@ export const profileApi = {
 // Issues API
 // ---------------------------------------------------------------------------
 
+/**
+ * The API serializes NUMERIC columns as strings, so `latitude` and `longitude`
+ * arrive as e.g. "5.7450404". Anything doing real maths on them — Leaflet
+ * markers, `Number.isFinite` guards, distance sorting — silently fails on a
+ * string, so coerce once here rather than at every call site.
+ */
+function normalizeIssue<T extends Record<string, unknown>>(raw: T): Issue {
+  const num = (v: unknown) => (v === null || v === undefined ? v : Number(v));
+  return {
+    ...(raw as unknown as Issue),
+    latitude: num(raw.latitude) as number,
+    longitude: num(raw.longitude) as number,
+    points_assigned: Number(raw.points_assigned ?? 0),
+  };
+}
+
 export const issuesApi = {
   // The API has no "list all issues" route — /events is the public feed that
   // serves that purpose. It names the primary key `issue_id`, so map it back
@@ -204,17 +220,14 @@ export const issuesApi = {
   getAll: async (status?: string): Promise<Issue[]> => {
     const res = await apiClient.get("/events", { params: { status } });
     const events = res.data?.data?.events ?? [];
-    return events.map(
-      ({ issue_id, ...rest }: { issue_id: string }): Issue => ({
-        id: issue_id,
-        ...(rest as Omit<Issue, "id">),
-      }),
+    return events.map(({ issue_id, ...rest }: { issue_id: string }): Issue =>
+      normalizeIssue({ id: issue_id, ...rest }),
     );
   },
 
   getById: async (id: string): Promise<Issue> => {
     const res = await apiClient.get(`/issues/${id}`);
-    return res.data;
+    return normalizeIssue(res.data);
   },
 
   getNearby: async (
@@ -225,7 +238,8 @@ export const issuesApi = {
     const res = await apiClient.get("/issues/nearby", {
       params: { latitude: lat, longitude: lng, radius_km: radius },
     });
-    return res.data.issues || res.data;
+    const list = res.data?.issues ?? res.data ?? [];
+    return (Array.isArray(list) ? list : []).map(normalizeIssue);
   },
 
   create: async (formData: FormData): Promise<Issue> => {

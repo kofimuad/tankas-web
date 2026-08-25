@@ -18,12 +18,14 @@ const IssuesMap = dynamic(() => import("@/components/issues-map"), {
 });
 
 const FALLBACK: [number, number] = [5.6037, -0.187]; // Accra city centre.
-const RADII = [2, 5, 10, 20] as const;
+// Starts wide: a 5 km default around the city centre misses reports in the
+// outer suburbs entirely when geolocation is unavailable.
+const RADII = [5, 10, 25, 50] as const;
 
 function MapContent() {
   const [center, setCenter] = useState<[number, number]>(FALLBACK);
   const [located, setLocated] = useState(false);
-  const [radius, setRadius] = useState<number>(5);
+  const [radius, setRadius] = useState<number>(25);
 
   const locate = useCallback(() => {
     if (!navigator.geolocation) return;
@@ -138,10 +140,10 @@ function MapContent() {
 }
 
 function zoomFor(radiusKm: number) {
-  if (radiusKm <= 2) return 15;
-  if (radiusKm <= 5) return 14;
-  if (radiusKm <= 10) return 13;
-  return 12;
+  if (radiusKm <= 5) return 13;
+  if (radiusKm <= 10) return 12;
+  if (radiusKm <= 25) return 11;
+  return 10;
 }
 
 function haversineKm([lat1, lon1]: [number, number], [lat2, lon2]: [number, number]) {

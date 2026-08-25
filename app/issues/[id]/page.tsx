@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { AuthGuard } from "@/components/auth-guard";
 import { AppShell } from "@/components/app-shell";
 import { Icon } from "@/components/ui/icon";
+import { ImageLightbox } from "@/components/image-lightbox";
 import { Pill } from "@/components/ui/pill";
 import {
   DIFFICULTY,
@@ -43,6 +44,7 @@ function IssueDetail({ issueId }: { issueId: string }) {
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
   const [pledgeOpen, setPledgeOpen] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -118,7 +120,8 @@ function IssueDetail({ issueId }: { issueId: string }) {
             alt=""
             fill
             sizes="(min-width: 1024px) 672px, 100vw"
-            className="object-cover"
+            className="cursor-zoom-in object-cover"
+            onClick={() => setPhotoOpen(true)}
             priority
           />
         )}
@@ -286,6 +289,15 @@ function IssueDetail({ issueId }: { issueId: string }) {
               : "Join cleanup"}
         </button>
       </div>
+
+      {photoOpen && issue.picture_url && (
+        <ImageLightbox
+          src={issue.picture_url}
+          alt={issue.title}
+          caption={issue.title}
+          onClose={() => setPhotoOpen(false)}
+        />
+      )}
 
       {pledgeOpen && (
         <PledgeDialog

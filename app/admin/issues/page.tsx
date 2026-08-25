@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { AdminGuard } from "@/components/auth-guard";
 import { AppShell } from "@/components/app-shell";
 import { Icon } from "@/components/ui/icon";
+import { ImageLightbox } from "@/components/image-lightbox";
 import { adminApi } from "@/lib/api";
 import {
   DIFFICULTY,
@@ -52,6 +53,7 @@ function ModerationQueue() {
   const [draft, setDraft] = useState<
     Record<string, { difficulty: Difficulty; priority: Priority }>
   >({});
+  const [viewing, setViewing] = useState<PendingIssue | null>(null);
 
   const { data, isPending } = useQuery({
     queryKey: ["admin-pending-issues"],
@@ -124,7 +126,12 @@ function ModerationQueue() {
               className="overflow-hidden rounded-lg border border-border bg-surface"
             >
               {issue.picture_url && (
-                <div className="relative h-45 w-full bg-surface-2">
+                <button
+                  type="button"
+                  onClick={() => setViewing(issue)}
+                  aria-label={`View the photo for "${issue.title}" full size`}
+                  className="group relative block h-56 w-full cursor-zoom-in bg-surface-2"
+                >
                   <Image
                     src={issue.picture_url}
                     alt=""
@@ -132,7 +139,11 @@ function ModerationQueue() {
                     sizes="(min-width: 768px) 672px, 100vw"
                     className="object-cover"
                   />
-                </div>
+                  <span className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 text-[11px] font-semibold text-white opacity-0 backdrop-blur transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                    <Icon name="search" size={13} />
+                    Inspect photo
+                  </span>
+                </button>
               )}
 
               <div className="space-y-3.5 p-4">
@@ -224,6 +235,15 @@ function ModerationQueue() {
             Nothing in the queue — all caught up.
           </p>
         </div>
+      )}
+
+      {viewing?.picture_url && (
+        <ImageLightbox
+          src={viewing.picture_url}
+          alt={viewing.title}
+          caption={viewing.title}
+          onClose={() => setViewing(null)}
+        />
       )}
     </div>
   );
