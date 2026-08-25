@@ -51,10 +51,12 @@ export function BottomNav() {
     );
   };
 
+  // One padding declaration for the bottom inset: `safe-bottom` and `pb-3`
+  // both set padding-bottom, so one was silently overriding the other.
   return (
     <nav
       aria-label="Primary"
-      className="safe-bottom fixed inset-x-0 bottom-0 z-50 px-4 pb-3 lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 px-4 pb-[calc(var(--tabbar-gap)+env(safe-area-inset-bottom,0px))] lg:hidden"
     >
       <div className="glass mx-auto flex h-15 max-w-md items-center gap-0.5 rounded-full border border-border p-1.5 shadow-[0_6px_20px_-4px_rgb(14_26_19/0.22)]">
         {items.slice(0, 2).map(tab)}

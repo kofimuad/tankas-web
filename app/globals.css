@@ -46,6 +46,15 @@
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 20px;
+
+  /* Floating tab bar geometry. Anything else pinned to the bottom of a mobile
+     screen must sit above it, so the total height lives here rather than being
+     re-guessed per screen. capsule (h-15) + gap beneath it + safe area. */
+  --tabbar-gap: 0.75rem;
+  --tabbar-capsule: 3.75rem;
+  --tabbar-height: calc(
+    var(--tabbar-capsule) + var(--tabbar-gap) + env(safe-area-inset-bottom, 0px)
+  );
 }
 
 .dark {

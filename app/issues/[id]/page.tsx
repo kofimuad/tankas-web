@@ -112,7 +112,7 @@ function IssueDetail({ issueId }: { issueId: string }) {
   const labels = issue.ai_labels ?? [];
 
   return (
-    <div className="mx-auto w-full max-w-2xl pb-24 lg:pb-8">
+    <div className="mx-auto w-full max-w-2xl pb-[calc(var(--tabbar-height)+5.5rem)] lg:pb-8">
       <div className="relative h-62 w-full bg-surface-2 lg:rounded-b-xl lg:overflow-hidden">
         {issue.picture_url && (
           <Image
@@ -267,7 +267,9 @@ function IssueDetail({ issueId }: { issueId: string }) {
       </div>
 
       {/* Sticky action bar — the primary intent of the screen. */}
-      <div className="safe-bottom fixed inset-x-0 bottom-0 z-40 flex items-center gap-2.5 border-t border-border bg-surface px-4 pb-5 pt-3.5 lg:static lg:border-0 lg:bg-transparent lg:px-0 lg:pt-2">
+      {/* Pinned above the tab bar, not under it: both were fixed to bottom-0
+          and the nav (z-50) won, hiding these controls entirely. */}
+      <div className="fixed inset-x-0 bottom-[var(--tabbar-height)] z-40 flex items-center gap-2.5 border-t border-border bg-surface px-4 pb-3.5 pt-3.5 lg:static lg:bottom-auto lg:border-0 lg:bg-transparent lg:px-0 lg:pt-2">
         <button
           type="button"
           onClick={() => setPledgeOpen(true)}
