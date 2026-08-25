@@ -1,8 +1,11 @@
 import axios from "axios";
 import Cookies from "js-cookie";
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://tankas-server.onrender.com";
+// Trailing slashes are stripped: the API does not normalise `host//api/...`,
+// it serves it as a 404, so a stray slash on the env var breaks every call.
+const BASE_URL = (
+  process.env.NEXT_PUBLIC_API_URL || "https://tankas-server.onrender.com"
+).replace(/\/+$/, "");
 
 // ---------------------------------------------------------------------------
 // Axios instance
