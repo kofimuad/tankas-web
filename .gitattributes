@@ -1,10 +1,8 @@
-# .pen design files are encrypted binaries. Without this, core.autocrlf=true
-# on Windows lets Git treat them as text and rewrite line endings on checkout,
-# which corrupts the file.
-*.pen binary
-
 # Keep source line endings stable across platforms.
 * text=auto eol=lf
+
+# Binary assets must never be line-ending converted. These come AFTER the
+# catch-all above because .gitattributes is last-match-wins.
 *.png binary
 *.jpg binary
 *.jpeg binary
@@ -12,3 +10,8 @@
 *.ico binary
 *.woff binary
 *.woff2 binary
+
+# .pen design files are encrypted binaries. Without this, core.autocrlf=true
+# on Windows lets Git treat them as text and rewrite line endings on checkout,
+# which corrupts the file.
+*.pen binary
