@@ -17,6 +17,7 @@ const groups: NavGroup[] = [
       { href: "/dashboard", icon: "dashboard", label: "Dashboard" },
       { href: "/issues", icon: "list", label: "Issues" },
       { href: "/map", icon: "map", label: "Map" },
+      { href: "/warriors", icon: "users", label: "Warriors" },
     ],
   },
   {
@@ -24,6 +25,7 @@ const groups: NavGroup[] = [
     items: [
       { href: "/report", icon: "camera", label: "Report" },
       { href: "/collections", icon: "package", label: "Collections" },
+      { href: "/pledges", icon: "heart", label: "My pledges" },
     ],
   },
   {
@@ -35,13 +37,20 @@ const groups: NavGroup[] = [
   },
 ];
 
-// TODO: an Admin group belongs here, gated on `user.role === "admin"` to mirror
-// the backend's `require_admin`. Omitted until the /admin routes are built.
+// Gated on role to mirror the backend's `require_admin` guard.
+const adminGroup: NavGroup = {
+  label: "Admin",
+  items: [
+    { href: "/admin", icon: "dashboard", label: "Overview" },
+    { href: "/admin/issues", icon: "flag", label: "Moderation" },
+    { href: "/admin/users", icon: "users", label: "Users" },
+  ],
+};
 
 export function AppSidebar() {
   const pathname = usePathname();
   const { user } = useAuth();
-  const visible = groups;
+  const visible = user?.role === "admin" ? [...groups, adminGroup] : groups;
   const tier = tierForPoints(user?.total_points ?? 0);
 
   return (

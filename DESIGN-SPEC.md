@@ -181,8 +181,24 @@ New API clients   publicApi (/stats)  commentsApi  rewardsApi  collectionsApi
   `iconLibrary: hugeicons` and it was the installed set.
 - /map was NOT in the pen design; built directly against /issues/nearby.
 
-## Not yet built
-Warriors directory, group/volunteer coordination, complete-issue + verify
-volunteers, collection start/submit form, destinations CRUD, delivery
-verification queue, my pledges, admin (overview / users / moderation).
-An Admin sidebar group is stubbed with a TODO in app-sidebar.tsx.
+## Remaining
+Destinations CRUD (create/delete depots) and the destination-staff delivery
+verification queue are wired in lib/api.ts (getPendingVerifications,
+verifyDelivery) but have no screen yet — they need a depot-operator role that
+the app does not model.
+
+# ============================================================
+# SECOND PASS  (2026-08-25)
+# ============================================================
+Routes added: /warriors, /warriors/[id], /pledges, /groups/[id],
+/collections/[issueId], /admin, /admin/users, /admin/issues
+21 routes total. tsc clean, eslint 0 problems, build green, routes smoke-tested.
+
+- /groups/[id]      members, confirm participation, leader upload-proof +
+                    verify-volunteers checklist, transfer leadership
+- /collections/[id] 3-step start -> collect -> deliver, kg stepper, depot
+                    picker with a client-side GPS range check mirroring the
+                    server's distance verification
+- /admin/issues     classify difficulty + priority with a live points preview
+                    computed from the same formula as PointsCalculator
+- Admin sidebar group restored, gated on user.role === "admin"

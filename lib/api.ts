@@ -254,6 +254,11 @@ export const pledgesApi = {
     });
     return res.data.data;
   },
+
+  fulfil: async (pledgeId: string) => {
+    const res = await apiClient.post(`/pledges/${pledgeId}/fulfil`);
+    return res.data?.data ?? res.data;
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -268,9 +273,34 @@ export interface PlatformStats {
   total_kg_collected: number;
 }
 
+export interface Warrior {
+  user_id: string;
+  rank: number;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  total_points: number;
+  badge_tier: "bronze" | "silver" | "gold";
+  issues_reported: number;
+  tasks_completed: number;
+  total_kg_collected: number;
+  joined_at: string;
+}
+
 export const publicApi = {
   getStats: async (): Promise<PlatformStats> => {
     const res = await apiClient.get("/stats");
+    return res.data?.data ?? res.data;
+  },
+
+  getWarriors: async (limit = 50, offset = 0): Promise<Warrior[]> => {
+    const res = await apiClient.get("/warriors", { params: { limit, offset } });
+    const data = res.data?.data ?? res.data;
+    return data?.warriors ?? [];
+  },
+
+  getWarrior: async (userId: string): Promise<Warrior> => {
+    const res = await apiClient.get(`/warriors/${userId}`);
     return res.data?.data ?? res.data;
   },
 };
@@ -332,6 +362,73 @@ export const volunteersApi = {
   getProfile: async (userId: string) => {
     const res = await apiClient.get(`/volunteers/profile/${userId}`);
     return res.data;
+  },
+
+  transferLeadership: async (volunteerId: string, newLeaderUserId: string) => {
+    const res = await apiClient.post(
+      `/volunteers/${volunteerId}/transfer-leadership`,
+      { new_leader_user_id: newLeaderUserId },
+    );
+    return res.data?.data ?? res.data;
+  },
+};
+
+export interface GroupMember {
+  volunteer_id: string;
+  user_id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  is_leader: boolean;
+  solo_work: boolean;
+}
+
+export interface Group {
+  group_id: string;
+  issue_id: string;
+  leader_id: string;
+  members: GroupMember[];
+  member_count: number;
+  created_at: string;
+}
+
+// ---------------------------------------------------------------------------
+// Completion API
+// ---------------------------------------------------------------------------
+
+export const completionApi = {
+  confirmParticipation: async (issueId: string, groupId: string) => {
+    const res = await apiClient.post("/completion/confirm-participation", {
+      issue_id: issueId,
+      group_id: groupId,
+    });
+    return res.data?.data ?? res.data;
+  },
+
+  // Leader uploads the resolution photo; the API re-runs image analysis on it.
+  completeIssue: async (issueId: string, groupId: string, file: File) => {
+    const fd = new FormData();
+    fd.append("issue_id", issueId);
+    fd.append("group_id", groupId);
+    fd.append("file", file);
+    const res = await apiClient.post("/completion/complete-issue", fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data?.data ?? res.data;
+  },
+
+  // Points are split only across the volunteers named here.
+  verifyVolunteers: async (
+    issueId: string,
+    groupId: string,
+    verifiedVolunteerIds: string[],
+  ) => {
+    const res = await apiClient.post("/completion/verify-volunteers", {
+      issue_id: issueId,
+      group_id: groupId,
+      verified_volunteer_ids: verifiedVolunteerIds,
+    });
+    return res.data?.data ?? res.data;
   },
 };
 
@@ -454,6 +551,22 @@ export const collectionsApi = {
     const res = await apiClient.delete(`/collections/${collectionId}/cancel`);
     return res.data?.data ?? res.data;
   },
+
+  getPendingVerifications: async (destinationId: string) => {
+    const res = await apiClient.get(
+      `/destinations/${destinationId}/pending-verifications`,
+    );
+    const data = res.data?.data ?? res.data;
+    return data?.collections ?? data ?? [];
+  },
+
+  // Destination staff / admin confirm the drop-off actually arrived.
+  verifyDelivery: async (collectionId: string, formData: FormData) => {
+    const res = await apiClient.post(`/verify/${collectionId}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data?.data ?? res.data;
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -511,6 +624,24 @@ export const adminApi = {
 
   banUser: async (userId: string, reason: string) => {
     const res = await apiClient.post(`/admin/users/${userId}/ban`, { reason });
+    return res.data.data;
+  },
+
+  unbanUser: async (userId: string) => {
+    const res = await apiClient.post(`/admin/users/${userId}/unban`);
+    return res.data.data;
+  },
+
+  makeAdmin: async (userId: string) => {
+    const res = await apiClient.post(`/admin/users/${userId}/make-admin`);
+    return res.data.data;
+  },
+
+  verifyIssue: async (issueId: string, approved: boolean, notes?: string) => {
+    const res = await apiClient.post(`/admin/issues/${issueId}/verify`, {
+      approved,
+      notes,
+    });
     return res.data.data;
   },
 

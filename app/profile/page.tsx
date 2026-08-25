@@ -19,7 +19,9 @@ import { cn } from "@/lib/utils";
 
 const MENU: { href: string; icon: IconName; label: string }[] = [
   { href: "/collections", icon: "package", label: "My collections" },
+  { href: "/pledges", icon: "heart", label: "My pledges" },
   { href: "/redeem", icon: "wallet", label: "Wallet & rewards" },
+  { href: "/warriors", icon: "users", label: "Warriors" },
   { href: "/leaderboard", icon: "trophy", label: "My rankings" },
 ];
 
