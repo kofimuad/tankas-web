@@ -1,11 +1,24 @@
 import axios from "axios";
 import Cookies from "js-cookie";
 
-// Trailing slashes are stripped: the API does not normalise `host//api/...`,
-// it serves it as a 404, so a stray slash on the env var breaks every call.
-const BASE_URL = (
-  process.env.NEXT_PUBLIC_API_URL || "https://tankas-server.onrender.com"
-).replace(/\/+$/, "");
+const FALLBACK_API_URL = "https://tankas-server.onrender.com";
+
+/**
+ * Normalises whatever NEXT_PUBLIC_API_URL happens to contain.
+ *
+ * Two shapes break every request if passed through untouched:
+ *  - no scheme ("api.example.com") — axios treats it as a relative path and
+ *    resolves it against the frontend's own origin, giving a 404
+ *  - a trailing slash — produces `host//api/...`, which FastAPI 404s rather
+ *    than normalising
+ */
+function normalizeBaseUrl(raw: string | undefined): string {
+  const trimmed = (raw ?? "").trim().replace(/\/+$/, "");
+  if (!trimmed) return FALLBACK_API_URL;
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
+const BASE_URL = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 
 // ---------------------------------------------------------------------------
 // Axios instance
