@@ -202,3 +202,41 @@ Routes added: /warriors, /warriors/[id], /pledges, /groups/[id],
 - /admin/issues     classify difficulty + priority with a live points preview
                     computed from the same formula as PointsCalculator
 - Admin sidebar group restored, gated on user.role === "admin"
+
+# ============================================================
+# DESIGN FILE COMPLETE  (2026-08-25)
+# ============================================================
+21 designs x light/dark = 42 screens. 5 reusable components.
+Verified: 0 layout problems. (46 reported "clipped" nodes are all generated
+map SVG paths intentionally clipped by the Map Canvas frame.)
+
+Mobile (15)
+  Dashboard          Issues Feed        Issue Detail
+  Report Issue       Collection Submit  Leaderboard
+  Profile            Rewards & Wallet   Sign In
+  Sign Up            OTP Verify         Nearby Map
+  Warriors           Group              My Pledges
+
+Desktop 1440x1024 (6)
+  Dashboard          Admin Overview     Admin Moderation
+  Admin Users        Depots             Deliveries
+
+Notes on the last pass
+- Nearby Map uses a Generate("svg") street-map plate under real pin markers,
+  so the map reads as a map without hand-drawn artwork.
+- Group covers the whole completion flow: confirm participation, leader
+  upload-proof, the verify-volunteers checklist, transfer leadership.
+- Deliveries shows both GPS states — within range (green) and outside range
+  (amber) — because that is the decision the depot operator actually makes.
+- Depots + Deliveries are designed but NOT implemented: they need a
+  depot-operator role the app does not model yet. Everything else on the
+  canvas is built and live in the app.
+
+Gotchas found while building (for future edits)
+- Copy() ignores a `descendants` map keyed by name; set values with Update()
+  on the copied ids instead.
+- Copying a screen then deleting its children leaves nodes that do not lay
+  out. Replace() the container, or build fresh.
+- Text nodes reject `padding` — wrap them in a frame.
+- A horizontal card with a fill_container-height child needs a fixed height
+  on the card, or both collapse.
