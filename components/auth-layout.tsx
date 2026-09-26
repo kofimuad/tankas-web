@@ -29,7 +29,9 @@ export function AuthLayout({
           >
             <Icon name="leaf" size={32} className="text-on-primary" />
           </Link>
-          <h1 className="font-display text-[30px] font-extrabold tracking-[-0.02em] text-ink">
+          {/* Scales with the viewport so titles like "Verify your email" stay
+              on one line on phones; 30px is the ceiling on wider screens. */}
+          <h1 className="whitespace-nowrap text-center font-display text-[length:clamp(20px,calc((100vw_-_48px)/13),30px)] font-extrabold tracking-[-0.02em] text-ink">
             {title}
           </h1>
           <p className="text-center text-[13px] text-ink-muted">{subtitle}</p>
