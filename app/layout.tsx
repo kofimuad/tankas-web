@@ -31,6 +31,8 @@ export const viewport = {
 };
 
 export const metadata: Metadata = {
+  // Link previews need absolute image URLs; Next builds them from this.
+  metadataBase: new URL("https://tankas.me"),
   title: "Tankas — Snap. Clean. Earn.",
   description:
     "Ghana's environmental cleanup coordination platform. Report issues, volunteer for cleanups, and earn rewards.",
